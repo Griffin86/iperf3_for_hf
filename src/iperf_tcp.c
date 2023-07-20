@@ -57,19 +57,132 @@ iperf_tcp_recv(struct iperf_stream *sp)
 {
     int r;
 
-    r = Nread(sp->socket, sp->buffer, sp->settings->blksize, Ptcp);
+    r = Nread(
+        sp->socket,
+        sp->buffer + sp->buffer_read_offset,
+        sp->settings->blksize - sp->buffer_read_offset,
+        Ptcp
+    );
 
     if (r < 0)
         return r;
 
     /* Only count bytes received while we're in the correct state. */
     if (sp->test->state == TEST_RUNNING) {
-	sp->result->bytes_received += r;
-	sp->result->bytes_received_this_interval += r;
-    }
-    else {
-	if (sp->test->debug)
-	    printf("Late receive, state = %d\n", sp->test->state);
+
+        sp->result->bytes_received += r;
+        sp->result->bytes_received_this_interval += r;
+
+        if ((sp->buffer_read_offset + r) > sp->settings->blksize) {
+
+            // WARN if this occurs - shouldn't happen since we only read one
+            // block at a time
+
+            iperf_err(
+                sp->test,
+                "\nWARN: Buffer read offset would exceed block size!\n"
+                    "(Old) buffer read offset: %d\n"
+                    "Bytes read (r): %d",
+                sp->buffer_read_offset,
+                r
+            );
+
+            sp->buffer_read_offset = sp->settings->blksize;
+        } else {
+
+            sp->buffer_read_offset += r;
+        }
+
+        if (sp->buffer_read_offset >= (sizeof(uint32_t) * 2)) {
+
+            // Process start block timestamp
+            uint32_t sec, usec;
+            struct iperf_time
+                sent_time_blk_start,
+                recv_time_blk_start,
+                time_diff_blk_start;
+
+            memcpy(&sec, sp->buffer, sizeof(sec));
+            memcpy(&usec, sp->buffer + sizeof(sec), sizeof(usec));
+
+            sec = ntohl(sec);
+            usec = ntohl(usec);
+
+            sent_time_blk_start.secs = sec;
+            sent_time_blk_start.usecs = usec;
+
+            iperf_time_now(&recv_time_blk_start);
+
+            iperf_time_diff(
+                &recv_time_blk_start,
+                &sent_time_blk_start,
+                &time_diff_blk_start
+            );
+
+            printf(
+                "\nBLOCK start time diff: %f\n",
+                iperf_time_in_secs(&time_diff_blk_start)
+            );
+
+            /// TODO: Log time diff (JSON?)
+        }
+
+        if (sp->buffer_read_offset == sp->settings->blksize) {
+
+            if (sp->buffer_read_offset >= (sizeof(uint32_t) * 4)) {
+
+                // Process end block timestamps
+                uint32_t sec, usec;
+
+                struct iperf_time
+                    sent_time_blk_end,
+                    recv_time_blk_end,
+                    time_diff_blk_end;
+
+                memcpy(
+                    &sec,
+                    sp->buffer + sp->buffer_read_offset - sizeof(sec) - sizeof(usec),
+                    sizeof(sec)
+                );
+
+                memcpy(
+                    &usec,
+                    sp->buffer + sp->buffer_read_offset - sizeof(usec),
+                    sizeof(usec)
+                );
+
+                sec = ntohl(sec);
+                usec = ntohl(usec);
+
+                sent_time_blk_end.secs = sec;
+                sent_time_blk_end.usecs = usec;
+
+                iperf_time_now(&recv_time_blk_end);
+
+                iperf_time_diff(
+                    &recv_time_blk_end,
+                    &sent_time_blk_end,
+                    &time_diff_blk_end
+                );
+
+                printf(
+                    "\nBLOCK end time diff: %f\n",
+                    iperf_time_in_secs(&time_diff_blk_end)
+                );
+
+                /// TODO: Log time diff (JSON?)
+            }
+
+            // Reset buffer read offset
+            sp->buffer_read_offset = 0;
+        }
+    } else {
+
+        if (sp->test->debug) {
+
+            printf("Late receive, state = %d\n", sp->test->state);
+        }
+
     }
 
     return r;
@@ -85,13 +198,60 @@ iperf_tcp_send(struct iperf_stream *sp)
 {
     int r;
 
-    if (!sp->pending_size)
-	sp->pending_size = sp->settings->blksize;
+    if (!sp->pending_size) {
+
+        sp->pending_size = sp->settings->blksize;
+    }
+
+    // Write Timestamp at start of Packet
+    if (sp->pending_size == sp->settings->blksize &&
+        sp->pending_size >= (sizeof(uint32_t) * 2)
+        ) {
+
+        struct iperf_time start_blk_time;
+
+        uint32_t  sec, usec;
+
+        iperf_time_now(&start_blk_time);
+        sec = htonl(start_blk_time.secs);
+        usec = htonl(start_blk_time.usecs);
+
+        memcpy(sp->buffer, &sec, sizeof(sec));
+        memcpy(sp->buffer + sizeof(sec), &usec, sizeof(usec));
+    }
+
+    // Always update End Timestamp
+    // (Yes, this will likely incur a performance hit if the sending host
+    //  is under load, but for HF testing scenarios this won't be an issue)
+    if (sp->pending_size <= sp->settings->blksize && // redundant - but kept to make intent clear
+        sp->pending_size >= (sizeof(uint32_t) * 4)
+        ) {
+
+        struct iperf_time end_blk_time;
+
+        uint32_t  sec, usec;
+
+        iperf_time_now(&end_blk_time);
+        sec = htonl(end_blk_time.secs);
+        usec = htonl(end_blk_time.usecs);
+
+        memcpy(
+            sp->buffer + sp->pending_size - sizeof(sec) - sizeof(usec),
+            &sec,
+            sizeof(sec)
+        );
+
+        memcpy(
+            sp->buffer + sp->pending_size - sizeof(usec),
+            &usec,
+            sizeof(usec)
+        );
+    }
 
     if (sp->test->zerocopy)
-	r = Nsendfile(sp->buffer_fd, sp->socket, sp->buffer, sp->pending_size);
+        r = Nsendfile(sp->buffer_fd, sp->socket, sp->buffer, sp->pending_size);
     else
-	r = Nwrite(sp->socket, sp->buffer, sp->pending_size, Ptcp);
+        r = Nwrite(sp->socket, sp->buffer, sp->pending_size, Ptcp);
 
     if (r < 0)
         return r;
@@ -101,8 +261,8 @@ iperf_tcp_send(struct iperf_stream *sp)
     sp->result->bytes_sent_this_interval += r;
 
     if (sp->test->debug_level >=  DEBUG_LEVEL_DEBUG)
-	printf("sent %d bytes of %d, pending %d, total %" PRIu64 "\n",
-	    r, sp->settings->blksize, sp->pending_size, sp->result->bytes_sent);
+        printf("sent %d bytes of %d, pending %d, total %" PRIu64 "\n",
+            r, sp->settings->blksize, sp->pending_size, sp->result->bytes_sent);
 
     return r;
 }
@@ -480,7 +640,7 @@ iperf_tcp_connect(struct iperf_test *test)
     if (sndbuf_actual_item == NULL) {
 	cJSON_AddNumberToObject(test->json_start, "sndbuf_actual", sndbuf_actual);
     }
-        
+
     cJSON *rcvbuf_actual_item = cJSON_GetObjectItem(test->json_start, "rcvbuf_actual");
     if (rcvbuf_actual_item == NULL) {
 	cJSON_AddNumberToObject(test->json_start, "rcvbuf_actual", rcvbuf_actual);

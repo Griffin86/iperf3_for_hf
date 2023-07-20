@@ -1892,43 +1892,70 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
     no_throttle_check = test->settings->rate != 0 && test->settings->burst == 0;
 
     for (; multisend > 0; --multisend) {
-	if (no_throttle_check)
-	    iperf_time_now(&now);
-	streams_active = 0;
-	SLIST_FOREACH(sp, &test->streams, streams) {
-	    if ((sp->green_light && sp->sender &&
-		 (write_setP == NULL || FD_ISSET(sp->socket, write_setP)))) {
-        if (multisend > 1 && test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
+
+        if (no_throttle_check)
+            iperf_time_now(&now);
+
+        streams_active = 0;
+        SLIST_FOREACH(sp, &test->streams, streams) {
+
+            if ((sp->green_light &&
+                sp->sender &&
+                (write_setP == NULL || FD_ISSET(sp->socket, write_setP)))
+                ) {
+
+                if (multisend > 1 && test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
+                    break;
+
+                if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
+                    break;
+
+                if ((r = sp->snd(sp)) < 0) {
+
+                    if (r == NET_SOFTERROR)
+                        break;
+
+                    i_errno = IESTREAMWRITE;
+
+                    return r;
+                }
+
+                streams_active = 1;
+                test->bytes_sent += r;
+
+                if (!sp->pending_size) {
+
+                    ++test->blocks_sent;
+                }
+
+                if (no_throttle_check) {
+                    iperf_check_throttle(sp, &now);
+                }
+            }
+        }
+
+        if (!streams_active) {
+
             break;
-        if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
-            break;
-		if ((r = sp->snd(sp)) < 0) {
-		    if (r == NET_SOFTERROR)
-			break;
-		    i_errno = IESTREAMWRITE;
-		    return r;
-		}
-		streams_active = 1;
-		test->bytes_sent += r;
-		if (!sp->pending_size)
-		    ++test->blocks_sent;
-                if (no_throttle_check)
-		    iperf_check_throttle(sp, &now);
-	    }
-	}
-	if (!streams_active)
-	    break;
+        }
     }
+
     if (!no_throttle_check) {   /* Throttle check if was not checked for each send */
-	iperf_time_now(&now);
-	SLIST_FOREACH(sp, &test->streams, streams)
-	    if (sp->sender)
-	        iperf_check_throttle(sp, &now);
+
+        iperf_time_now(&now);
+        SLIST_FOREACH(sp, &test->streams, streams)
+            if (sp->sender)
+                iperf_check_throttle(sp, &now);
     }
+
     if (write_setP != NULL)
-	SLIST_FOREACH(sp, &test->streams, streams)
-	    if (FD_ISSET(sp->socket, write_setP))
-		FD_CLR(sp->socket, write_setP);
+
+        SLIST_FOREACH(sp, &test->streams, streams) {
+
+            if (FD_ISSET(sp->socket, write_setP)) {
+               FD_CLR(sp->socket, write_setP);
+            }
+        }
 
     return 0;
 }
@@ -4407,6 +4434,9 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
         free(sp);
         return NULL;
     }
+
+    sp->buffer_read_offset = 0;
+
     sp->pending_size = 0;
 
     /* Set socket */
