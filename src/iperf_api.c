@@ -236,6 +236,12 @@ iperf_get_test_blksize(struct iperf_test *ipt)
     return ipt->settings->blksize;
 }
 
+int
+iperf_get_tcp_based_latency_test(struct iperf_test* ipt)
+{
+    return ipt->settings->tcp_based_latency_test_flag;
+}
+
 FILE *
 iperf_get_test_outfile (struct iperf_test *ipt)
 {
@@ -483,6 +489,12 @@ void
 iperf_set_test_blksize(struct iperf_test *ipt, int blksize)
 {
     ipt->settings->blksize = blksize;
+}
+
+void
+iperf_set_test_tcp_based_latency_test( struct iperf_test* ipt, int tcp_latency_flag)
+{
+    ipt->settings->tcp_based_latency_test_flag = tcp_latency_flag;
 }
 
 void
@@ -1045,6 +1057,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         {"bytes", required_argument, NULL, 'n'},
         {"blockcount", required_argument, NULL, 'k'},
         {"length", required_argument, NULL, 'l'},
+        {"tcp-based-latency-test", no_argument, NULL, OPT_TCP_LATENCY_TEST},
         {"parallel", required_argument, NULL, 'P'},
         {"reverse", no_argument, NULL, 'R'},
         {"bidir", no_argument, NULL, OPT_BIDIRECTIONAL},
@@ -1285,7 +1298,11 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 break;
             case 'l':
                 blksize = unit_atoi(optarg);
-		client_flag = 1;
+                client_flag = 1;
+                break;
+            case OPT_TCP_LATENCY_TEST:
+                iperf_set_test_tcp_based_latency_test(test, 1);
+                client_flag = 1;
                 break;
             case 'P':
                 test->num_streams = atoi(optarg);
