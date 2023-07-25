@@ -3303,72 +3303,79 @@ iperf_stats_callback(struct iperf_test *test)
 
     temp.omitted = test->omitting;
     SLIST_FOREACH(sp, &test->streams, streams) {
+
         rp = sp->result;
-    temp.bytes_transferred = sp->sender ? rp->bytes_sent_this_interval : rp->bytes_received_this_interval;
+        temp.bytes_transferred = sp->sender ? rp->bytes_sent_this_interval : rp->bytes_received_this_interval;
 
         // Total bytes transferred this interval
-    total_interval_bytes_transferred += rp->bytes_sent_this_interval + rp->bytes_received_this_interval;
+        total_interval_bytes_transferred += rp->bytes_sent_this_interval + rp->bytes_received_this_interval;
 
-    irp = TAILQ_LAST(&rp->interval_results, irlisthead);
+        irp = TAILQ_LAST(&rp->interval_results, irlisthead);
         /* result->end_time contains timestamp of previous interval */
         if ( irp != NULL ) /* not the 1st interval */
             memcpy(&temp.interval_start_time, &rp->end_time, sizeof(struct iperf_time));
         else /* or use timestamp from beginning */
             memcpy(&temp.interval_start_time, &rp->start_time, sizeof(struct iperf_time));
+
         /* now save time of end of this interval */
         iperf_time_now(&rp->end_time);
         memcpy(&temp.interval_end_time, &rp->end_time, sizeof(struct iperf_time));
         iperf_time_diff(&temp.interval_start_time, &temp.interval_end_time, &temp_time);
         temp.interval_duration = iperf_time_in_secs(&temp_time);
-    if (test->protocol->id == Ptcp) {
-        if ( has_tcpinfo()) {
-        save_tcpinfo(sp, &temp);
-        if (test->sender_has_retransmits == 1) {
-            long total_retrans = get_total_retransmits(&temp);
-            temp.interval_retrans = total_retrans - rp->stream_prev_total_retrans;
-            rp->stream_retrans += temp.interval_retrans;
-            rp->stream_prev_total_retrans = total_retrans;
 
-            temp.snd_cwnd = get_snd_cwnd(&temp);
-            if (temp.snd_cwnd > rp->stream_max_snd_cwnd) {
-            rp->stream_max_snd_cwnd = temp.snd_cwnd;
-            }
+        if (test->protocol->id == Ptcp) {
+            if ( has_tcpinfo()) {
 
-            temp.snd_wnd = get_snd_wnd(&temp);
-            if (temp.snd_wnd > rp->stream_max_snd_wnd) {
-            rp->stream_max_snd_wnd = temp.snd_wnd;
-            }
+                save_tcpinfo(sp, &temp);
 
-            temp.rtt = get_rtt(&temp);
-            if (temp.rtt > rp->stream_max_rtt) {
-            rp->stream_max_rtt = temp.rtt;
-            }
-            if (rp->stream_min_rtt == 0 ||
-            temp.rtt < rp->stream_min_rtt) {
-            rp->stream_min_rtt = temp.rtt;
-            }
-            rp->stream_sum_rtt += temp.rtt;
-            rp->stream_count_rtt++;
+                if (test->sender_has_retransmits == 1) {
 
-            temp.rttvar = get_rttvar(&temp);
-            temp.pmtu = get_pmtu(&temp);
-        }
-        }
-    } else {
-        if (irp == NULL) {
-        temp.interval_packet_count = sp->packet_count;
-        temp.interval_outoforder_packets = sp->outoforder_packets;
-        temp.interval_cnt_error = sp->cnt_error;
+                    long total_retrans = get_total_retransmits(&temp);
+                    temp.interval_retrans = total_retrans - rp->stream_prev_total_retrans;
+                    rp->stream_retrans += temp.interval_retrans;
+                    rp->stream_prev_total_retrans = total_retrans;
+
+                    temp.snd_cwnd = get_snd_cwnd(&temp);
+                    if (temp.snd_cwnd > rp->stream_max_snd_cwnd) {
+                        rp->stream_max_snd_cwnd = temp.snd_cwnd;
+                    }
+
+                    temp.snd_wnd = get_snd_wnd(&temp);
+                    if (temp.snd_wnd > rp->stream_max_snd_wnd) {
+                        rp->stream_max_snd_wnd = temp.snd_wnd;
+                    }
+
+                    temp.rtt = get_rtt(&temp);
+                    if (temp.rtt > rp->stream_max_rtt) {
+                        rp->stream_max_rtt = temp.rtt;
+                    }
+                    if (rp->stream_min_rtt == 0 ||
+                        temp.rtt < rp->stream_min_rtt) {
+                        rp->stream_min_rtt = temp.rtt;
+                    }
+                    rp->stream_sum_rtt += temp.rtt;
+                    rp->stream_count_rtt++;
+
+                    temp.rttvar = get_rttvar(&temp);
+                    temp.pmtu = get_pmtu(&temp);
+                }
+            }
         } else {
-        temp.interval_packet_count = sp->packet_count - irp->packet_count;
-        temp.interval_outoforder_packets = sp->outoforder_packets - irp->outoforder_packets;
-        temp.interval_cnt_error = sp->cnt_error - irp->cnt_error;
+            if (irp == NULL) {
+                temp.interval_packet_count = sp->packet_count;
+                temp.interval_outoforder_packets = sp->outoforder_packets;
+                temp.interval_cnt_error = sp->cnt_error;
+            } else {
+                temp.interval_packet_count = sp->packet_count - irp->packet_count;
+                temp.interval_outoforder_packets = sp->outoforder_packets - irp->outoforder_packets;
+                temp.interval_cnt_error = sp->cnt_error - irp->cnt_error;
+            }
+            temp.packet_count = sp->packet_count;
+            temp.jitter = sp->jitter;
+            temp.outoforder_packets = sp->outoforder_packets;
+            temp.cnt_error = sp->cnt_error;
         }
-        temp.packet_count = sp->packet_count;
-        temp.jitter = sp->jitter;
-        temp.outoforder_packets = sp->outoforder_packets;
-        temp.cnt_error = sp->cnt_error;
-    }
+
         add_to_interval_list(rp, &temp);
         rp->bytes_sent_this_interval = rp->bytes_received_this_interval = 0;
     }
