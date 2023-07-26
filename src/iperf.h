@@ -126,6 +126,19 @@ struct iperf_stream_result
     int stream_count_rtt;
     long stream_max_snd_cwnd;
     long stream_max_snd_wnd;
+
+    double stream_max_tx_to_rx_time_blk_strt;
+    double stream_min_tx_to_rx_time_blk_strt;
+
+    double stream_avg_tx_to_rx_time_blk_strt;
+    int stream_avg_cntr_blk_strt;
+
+    double stream_max_tx_to_rx_time_blk_end;
+    double stream_min_tx_to_rx_time_blk_end;
+
+    double stream_avg_tx_to_rx_time_blk_end;
+    int stream_avg_cntr_blk_end;
+
     struct iperf_time start_time;
     struct iperf_time end_time;
     struct iperf_time start_time_fixed;

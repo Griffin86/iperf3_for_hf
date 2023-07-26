@@ -3967,7 +3967,41 @@ iperf_print_results(struct iperf_test *test)
                     if (test->protocol->id == Ptcp || test->protocol->id == Psctp) {
                         /* Receiver summary, TCP and SCTP */
                         if (test->json_output)
-                            cJSON_AddItemToObject(json_summary_stream, report_receiver, iperf_json_printf("socket: %d  start: %f  end: %f  seconds: %f  bytes: %d  bits_per_second: %f sender: %b", (int64_t) sp->socket, (double) start_time, (double) receiver_time, (double) end_time, (int64_t) bytes_received, bandwidth * 8, stream_must_be_sender));
+
+                            cJSON_AddItemToObject(
+                                json_summary_stream,
+                                report_receiver,
+                                iperf_json_printf(
+                                    "socket: %d"
+                                        " start: %f"
+                                        " end: %f"
+                                        " seconds: %f"
+                                        " bytes: %d"
+                                        " bits_per_second: %f"
+                                        " sender: %b"
+                                        " max_sndr_to_rcvr_time_blk_strt: %f"
+                                        " min_sndr_to_rcvr_time_blk_strt: %f"
+                                        " avg_sndr_to_rcvr_time_blk_strt: %f"
+                                        " max_sndr_to_rcvr_time_blk_end: %f"
+                                        " min_sndr_to_rcvr_time_blk_end: %f"
+                                        " avg_sndr_to_rcvr_time_blk_end: %f"
+                                    ,
+                                    (int64_t) sp->socket,
+                                    (double) start_time,
+                                    (double) receiver_time,
+                                    (double) end_time,
+                                    (int64_t) bytes_received,
+                                    bandwidth * 8,
+                                    stream_must_be_sender,
+                                    (double) sp->result->stream_max_tx_to_rx_time_blk_strt,
+                                    (double) sp->result->stream_min_tx_to_rx_time_blk_strt,
+                                    (double) sp->result->stream_avg_tx_to_rx_time_blk_strt,
+                                    (double) sp->result->stream_max_tx_to_rx_time_blk_end,
+                                    (double) sp->result->stream_min_tx_to_rx_time_blk_end,
+                                    (double) sp->result->stream_avg_tx_to_rx_time_blk_end
+                                )
+                            );
+
                         else
                             if (test->role == 's' && sp->sender) {
                                 if (test->verbose)

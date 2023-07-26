@@ -131,7 +131,27 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
             }
 
-            /// TODO: Log time diff (JSON?)
+            double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_start);
+
+            if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs) {
+
+                sp->result->stream_max_tx_to_rx_time_blk_strt = time_diff_in_secs;
+            }
+
+            if (sp->result->stream_min_tx_to_rx_time_blk_strt == 0.0 ||
+                sp->result->stream_min_tx_to_rx_time_blk_strt > time_diff_in_secs
+                ) {
+
+                sp->result->stream_min_tx_to_rx_time_blk_strt = time_diff_in_secs;
+            }
+
+            int old_stream_counter = sp->result->stream_avg_cntr_blk_strt;
+            sp->result->stream_avg_cntr_blk_strt++;
+
+            sp->result->stream_avg_tx_to_rx_time_blk_strt =
+                (sp->result->stream_avg_tx_to_rx_time_blk_strt * (old_stream_counter / sp->result->stream_avg_cntr_blk_strt)) +
+                (time_diff_in_secs / sp->result->stream_avg_cntr_blk_strt);
+
         }
 
         if (sp->buffer_read_offset == sp->settings->blksize) {
@@ -188,7 +208,26 @@ iperf_tcp_recv(struct iperf_stream *sp)
                     );
                 }
 
-                /// TODO: Log time diff (JSON?)
+                double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_end);
+
+                if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs) {
+
+                    sp->result->stream_max_tx_to_rx_time_blk_end = time_diff_in_secs;
+                }
+
+                if (sp->result->stream_min_tx_to_rx_time_blk_end == 0.0 ||
+                    sp->result->stream_min_tx_to_rx_time_blk_end > time_diff_in_secs
+                    ) {
+
+                    sp->result->stream_min_tx_to_rx_time_blk_end = time_diff_in_secs;
+                }
+
+                int old_stream_counter = sp->result->stream_avg_cntr_blk_end;
+                sp->result->stream_avg_cntr_blk_end++;
+
+                sp->result->stream_avg_tx_to_rx_time_blk_end =
+                    (sp->result->stream_avg_tx_to_rx_time_blk_end * (old_stream_counter / sp->result->stream_avg_cntr_blk_end)) +
+                    (time_diff_in_secs / sp->result->stream_avg_cntr_blk_end);
             }
 
             // Reset buffer read offset
