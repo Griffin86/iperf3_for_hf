@@ -469,13 +469,13 @@ iperf_run_server(struct iperf_test *test)
         }
 
     if (test->json_output) {
-	cJSON_AddItemToObject(test->json_start, "version", cJSON_CreateString(version));
-	cJSON_AddItemToObject(test->json_start, "system_info", cJSON_CreateString(get_system_info()));
+	    cJSON_AddItemToObject(test->json_start, "version", cJSON_CreateString(version));
+	    cJSON_AddItemToObject(test->json_start, "system_info", cJSON_CreateString(get_system_info()));
     } else if (test->verbose) {
-	iperf_printf(test, "%s\n", version);
-	iperf_printf(test, "%s", "");
-	iperf_printf(test, "%s\n", get_system_info());
-	iflush(test);
+        iperf_printf(test, "%s\n", version);
+        iperf_printf(test, "%s", "");
+        iperf_printf(test, "%s\n", get_system_info());
+        iflush(test);
     }
 
     // Open socket and listen

@@ -920,18 +920,18 @@ iperf_on_connect(struct iperf_test *test)
     now_secs = time((time_t*) 0);
     (void) strftime(now_str, sizeof(now_str), rfc1123_fmt, gmtime(&now_secs));
     if (test->json_output)
-    cJSON_AddItemToObject(test->json_start, "timestamp", iperf_json_printf("time: %s  timesecs: %d", now_str, (int64_t) now_secs));
+        cJSON_AddItemToObject(test->json_start, "timestamp", iperf_json_printf("time: %s  timesecs: %d", now_str, (int64_t) now_secs));
     else if (test->verbose)
-    iperf_printf(test, report_time, now_str);
+        iperf_printf(test, report_time, now_str);
 
     if (test->role == 'c') {
-    if (test->json_output)
-        cJSON_AddItemToObject(test->json_start, "connecting_to", iperf_json_printf("host: %s  port: %d", test->server_hostname, (int64_t) test->server_port));
-    else {
-        iperf_printf(test, report_connecting, test->server_hostname, test->server_port);
-        if (test->reverse)
-        iperf_printf(test, report_reverse, test->server_hostname);
-    }
+        if (test->json_output)
+            cJSON_AddItemToObject(test->json_start, "connecting_to", iperf_json_printf("host: %s  port: %d", test->server_hostname, (int64_t) test->server_port));
+        else {
+            iperf_printf(test, report_connecting, test->server_hostname, test->server_port);
+            if (test->reverse)
+            iperf_printf(test, report_reverse, test->server_hostname);
+        }
     } else {
         len = sizeof(sa);
         getpeername(test->ctrl_sck, (struct sockaddr *) &sa, &len);
@@ -953,15 +953,16 @@ iperf_on_connect(struct iperf_test *test)
         iperf_printf(test, report_accepted, ipr, port);
     }
     if (test->json_output) {
-    cJSON_AddStringToObject(test->json_start, "cookie", test->cookie);
+
+        cJSON_AddStringToObject(test->json_start, "cookie", test->cookie);
         if (test->protocol->id == SOCK_STREAM) {
-        if (test->settings->mss)
-        cJSON_AddNumberToObject(test->json_start, "tcp_mss", test->settings->mss);
-        else {
-        cJSON_AddNumberToObject(test->json_start, "tcp_mss_default", test->ctrl_sck_mss);
+            if (test->settings->mss)
+            cJSON_AddNumberToObject(test->json_start, "tcp_mss", test->settings->mss);
+            else {
+            cJSON_AddNumberToObject(test->json_start, "tcp_mss_default", test->ctrl_sck_mss);
+            }
         }
-        }
-    // Duplicate to make sure it appears on all output
+        // Duplicate to make sure it appears on all output
         cJSON_AddNumberToObject(test->json_start, "target_bitrate", test->settings->rate);
         cJSON_AddNumberToObject(test->json_start, "fq_rate", test->settings->fqrate);
     } else if (test->verbose) {
@@ -2308,18 +2309,18 @@ get_parameters(struct iperf_test *test)
         set_protocol(test, Ptcp);
     if ((j_p = cJSON_GetObjectItem(j, "udp")) != NULL)
         set_protocol(test, Pudp);
-        if ((j_p = cJSON_GetObjectItem(j, "sctp")) != NULL)
-            set_protocol(test, Psctp);
+    if ((j_p = cJSON_GetObjectItem(j, "sctp")) != NULL)
+        set_protocol(test, Psctp);
     if ((j_p = cJSON_GetObjectItem(j, "omit")) != NULL)
         test->omit = j_p->valueint;
     if ((j_p = cJSON_GetObjectItem(j, "server_affinity")) != NULL)
         test->server_affinity = j_p->valueint;
     if ((j_p = cJSON_GetObjectItem(j, "time")) != NULL)
         test->duration = j_p->valueint;
-        test->settings->bytes = 0;
+    test->settings->bytes = 0;
     if ((j_p = cJSON_GetObjectItem(j, "num")) != NULL)
         test->settings->bytes = j_p->valueint;
-        test->settings->blocks = 0;
+    test->settings->blocks = 0;
     if ((j_p = cJSON_GetObjectItem(j, "blockcount")) != NULL)
         test->settings->blocks = j_p->valueint;
     if ((j_p = cJSON_GetObjectItem(j, "MSS")) != NULL)
@@ -2330,8 +2331,8 @@ get_parameters(struct iperf_test *test)
         test->num_streams = j_p->valueint;
     if ((j_p = cJSON_GetObjectItem(j, "reverse")) != NULL)
         iperf_set_test_reverse(test, 1);
-        if ((j_p = cJSON_GetObjectItem(j, "bidirectional")) != NULL)
-            iperf_set_test_bidirectional(test, 1);
+    if ((j_p = cJSON_GetObjectItem(j, "bidirectional")) != NULL)
+        iperf_set_test_bidirectional(test, 1);
     if ((j_p = cJSON_GetObjectItem(j, "window")) != NULL)
         test->settings->socket_bufsize = j_p->valueint;
     if ((j_p = cJSON_GetObjectItem(j, "len")) != NULL)
@@ -2399,94 +2400,95 @@ send_results(struct iperf_test *test)
 
     j = cJSON_CreateObject();
     if (j == NULL) {
-    i_errno = IEPACKAGERESULTS;
-    r = -1;
-    } else {
-    cJSON_AddNumberToObject(j, "cpu_util_total", test->cpu_util[0]);
-    cJSON_AddNumberToObject(j, "cpu_util_user", test->cpu_util[1]);
-    cJSON_AddNumberToObject(j, "cpu_util_system", test->cpu_util[2]);
-    if ( test->mode == RECEIVER )
-        sender_has_retransmits = -1;
-    else
-        sender_has_retransmits = test->sender_has_retransmits;
-    cJSON_AddNumberToObject(j, "sender_has_retransmits", sender_has_retransmits);
-    if ( test->congestion_used ) {
-        cJSON_AddStringToObject(j, "congestion_used", test->congestion_used);
-    }
-
-    /* If on the server and sending server output, then do this */
-    if (test->role == 's' && test->get_server_output) {
-        if (test->json_output) {
-        /* Add JSON output */
-        cJSON_AddItemReferenceToObject(j, "server_output_json", test->json_top);
-        }
-        else {
-        /* Add textual output */
-        size_t buflen = 0;
-
-        /* Figure out how much room we need to hold the complete output string */
-        struct iperf_textline *t;
-        TAILQ_FOREACH(t, &(test->server_output_list), textlineentries) {
-            buflen += strlen(t->line);
-        }
-
-        /* Allocate and build it up from the component lines */
-        char *output = calloc(buflen + 1, 1);
-        TAILQ_FOREACH(t, &(test->server_output_list), textlineentries) {
-            strncat(output, t->line, buflen);
-            buflen -= strlen(t->line);
-        }
-
-        cJSON_AddStringToObject(j, "server_output_text", output);
-        free(output);
-        }
-    }
-
-    j_streams = cJSON_CreateArray();
-    if (j_streams == NULL) {
         i_errno = IEPACKAGERESULTS;
         r = -1;
     } else {
-        cJSON_AddItemToObject(j, "streams", j_streams);
-        SLIST_FOREACH(sp, &test->streams, streams) {
-        j_stream = cJSON_CreateObject();
-        if (j_stream == NULL) {
+        cJSON_AddNumberToObject(j, "cpu_util_total", test->cpu_util[0]);
+        cJSON_AddNumberToObject(j, "cpu_util_user", test->cpu_util[1]);
+        cJSON_AddNumberToObject(j, "cpu_util_system", test->cpu_util[2]);
+        if ( test->mode == RECEIVER )
+            sender_has_retransmits = -1;
+        else
+            sender_has_retransmits = test->sender_has_retransmits;
+        cJSON_AddNumberToObject(j, "sender_has_retransmits", sender_has_retransmits);
+        if ( test->congestion_used ) {
+            cJSON_AddStringToObject(j, "congestion_used", test->congestion_used);
+        }
+
+        /* If on the server and sending server output, then do this */
+        if (test->role == 's' && test->get_server_output) {
+            if (test->json_output) {
+                /* Add JSON output */
+                cJSON_AddItemReferenceToObject(j, "server_output_json", test->json_top);
+            } else {
+
+                /* Add textual output */
+                size_t buflen = 0;
+
+                /* Figure out how much room we need to hold the complete output string */
+                struct iperf_textline *t;
+                TAILQ_FOREACH(t, &(test->server_output_list), textlineentries) {
+                    buflen += strlen(t->line);
+                }
+
+                /* Allocate and build it up from the component lines */
+                char *output = calloc(buflen + 1, 1);
+                TAILQ_FOREACH(t, &(test->server_output_list), textlineentries) {
+                    strncat(output, t->line, buflen);
+                    buflen -= strlen(t->line);
+                }
+
+                cJSON_AddStringToObject(j, "server_output_text", output);
+                free(output);
+            }
+        }
+
+        j_streams = cJSON_CreateArray();
+        if (j_streams == NULL) {
             i_errno = IEPACKAGERESULTS;
             r = -1;
         } else {
-            cJSON_AddItemToArray(j_streams, j_stream);
-            bytes_transferred = sp->sender ? (sp->result->bytes_sent - sp->result->bytes_sent_omit) : sp->result->bytes_received;
-            retransmits = (sp->sender && test->sender_has_retransmits) ? sp->result->stream_retrans : -1;
-            cJSON_AddNumberToObject(j_stream, "id", sp->id);
-            cJSON_AddNumberToObject(j_stream, "bytes", bytes_transferred);
-            cJSON_AddNumberToObject(j_stream, "retransmits", retransmits);
-            cJSON_AddNumberToObject(j_stream, "jitter", sp->jitter);
-            cJSON_AddNumberToObject(j_stream, "errors", sp->cnt_error);
+            cJSON_AddItemToObject(j, "streams", j_streams);
+            SLIST_FOREACH(sp, &test->streams, streams) {
+                j_stream = cJSON_CreateObject();
+                if (j_stream == NULL) {
+                    i_errno = IEPACKAGERESULTS;
+                    r = -1;
+                } else {
+                    cJSON_AddItemToArray(j_streams, j_stream);
+                    bytes_transferred = sp->sender ? (sp->result->bytes_sent - sp->result->bytes_sent_omit) : sp->result->bytes_received;
+                    retransmits = (sp->sender && test->sender_has_retransmits) ? sp->result->stream_retrans : -1;
+                    cJSON_AddNumberToObject(j_stream, "id", sp->id);
+                    cJSON_AddNumberToObject(j_stream, "bytes", bytes_transferred);
+                    cJSON_AddNumberToObject(j_stream, "retransmits", retransmits);
+                    cJSON_AddNumberToObject(j_stream, "jitter", sp->jitter);
+                    cJSON_AddNumberToObject(j_stream, "errors", sp->cnt_error);
                     cJSON_AddNumberToObject(j_stream, "omitted_errors", sp->omitted_cnt_error);
-            cJSON_AddNumberToObject(j_stream, "packets", sp->packet_count);
+                    cJSON_AddNumberToObject(j_stream, "packets", sp->packet_count);
                     cJSON_AddNumberToObject(j_stream, "omitted_packets", sp->omitted_packet_count);
 
-            iperf_time_diff(&sp->result->start_time, &sp->result->start_time, &temp_time);
-            start_time = iperf_time_in_secs(&temp_time);
-            iperf_time_diff(&sp->result->start_time, &sp->result->end_time, &temp_time);
-            end_time = iperf_time_in_secs(&temp_time);
-            cJSON_AddNumberToObject(j_stream, "start_time", start_time);
-            cJSON_AddNumberToObject(j_stream, "end_time", end_time);
+                    iperf_time_diff(&sp->result->start_time, &sp->result->start_time, &temp_time);
+                    start_time = iperf_time_in_secs(&temp_time);
+                    iperf_time_diff(&sp->result->start_time, &sp->result->end_time, &temp_time);
+                    end_time = iperf_time_in_secs(&temp_time);
+                    cJSON_AddNumberToObject(j_stream, "start_time", start_time);
+                    cJSON_AddNumberToObject(j_stream, "end_time", end_time);
 
-        }
-        }
-        if (r == 0 && test->debug) {
+                }
+            }
+            if (r == 0 && test->debug) {
                 char *str = cJSON_Print(j);
-        printf("send_results\n%s\n", str);
+                printf("send_results\n%s\n", str);
                 cJSON_free(str);
+            }
+            if (r == 0 && JSON_write(test->ctrl_sck, j) < 0) {
+                i_errno = IESENDRESULTS;
+                r = -1;
+            }
         }
-        if (r == 0 && JSON_write(test->ctrl_sck, j) < 0) {
-        i_errno = IESENDRESULTS;
-        r = -1;
-        }
+        cJSON_Delete(j);
     }
-    cJSON_Delete(j);
-    }
+
     return r;
 }
 
@@ -2555,55 +2557,69 @@ get_results(struct iperf_test *test)
 
         j_streams = cJSON_GetObjectItem(j, "streams");
         if (j_streams == NULL) {
-        i_errno = IERECVRESULTS;
-        r = -1;
-        } else {
-            n = cJSON_GetArraySize(j_streams);
-        for (i=0; i<n; ++i) {
-            j_stream = cJSON_GetArrayItem(j_streams, i);
-            if (j_stream == NULL) {
+
             i_errno = IERECVRESULTS;
             r = -1;
-            } else {
-            j_id = cJSON_GetObjectItem(j_stream, "id");
-            j_bytes = cJSON_GetObjectItem(j_stream, "bytes");
-            j_retransmits = cJSON_GetObjectItem(j_stream, "retransmits");
-            j_jitter = cJSON_GetObjectItem(j_stream, "jitter");
-            j_errors = cJSON_GetObjectItem(j_stream, "errors");
-                        j_omitted_errors = cJSON_GetObjectItem(j_stream, "omitted_errors");
-            j_packets = cJSON_GetObjectItem(j_stream, "packets");
-                        j_omitted_packets = cJSON_GetObjectItem(j_stream, "omitted_packets");
-            j_start_time = cJSON_GetObjectItem(j_stream, "start_time");
-            j_end_time = cJSON_GetObjectItem(j_stream, "end_time");
-            if (j_id == NULL || j_bytes == NULL || j_retransmits == NULL || j_jitter == NULL || j_errors == NULL || j_packets == NULL) {
-                i_errno = IERECVRESULTS;
-                r = -1;
-                        } else if ( (j_omitted_errors == NULL && j_omitted_packets != NULL) || (j_omitted_errors != NULL && j_omitted_packets == NULL) ) {
-                            /* For backward compatibility allow to not receive "omitted" statistcs */
-                            i_errno = IERECVRESULTS;
-                r = -1;
-            } else {
-                sid = j_id->valueint;
-                bytes_transferred = j_bytes->valueint;
-                retransmits = j_retransmits->valueint;
-                jitter = j_jitter->valuedouble;
-                cerror = j_errors->valueint;
-                pcount = j_packets->valueint;
-                            if (j_omitted_packets != NULL) {
-                                omitted_cerror = j_omitted_errors->valueint;
-                                omitted_pcount = j_omitted_packets->valueint;
-                            }
-                SLIST_FOREACH(sp, &test->streams, streams)
-                if (sp->id == sid) break;
-                if (sp == NULL) {
-                i_errno = IESTREAMID;
-                r = -1;
+        } else {
+
+            n = cJSON_GetArraySize(j_streams);
+
+            for (i=0; i<n; ++i) {
+
+                j_stream = cJSON_GetArrayItem(j_streams, i);
+                if (j_stream == NULL) {
+                    i_errno = IERECVRESULTS;
+                    r = -1;
                 } else {
-                if (sp->sender) {
-                    sp->jitter = jitter;
-                    sp->cnt_error = cerror;
-                    sp->peer_packet_count = pcount;
-                    sp->result->bytes_received = bytes_transferred;
+
+                    j_id = cJSON_GetObjectItem(j_stream, "id");
+                    j_bytes = cJSON_GetObjectItem(j_stream, "bytes");
+                    j_retransmits = cJSON_GetObjectItem(j_stream, "retransmits");
+                    j_jitter = cJSON_GetObjectItem(j_stream, "jitter");
+                    j_errors = cJSON_GetObjectItem(j_stream, "errors");
+                    j_omitted_errors = cJSON_GetObjectItem(j_stream, "omitted_errors");
+                    j_packets = cJSON_GetObjectItem(j_stream, "packets");
+                    j_omitted_packets = cJSON_GetObjectItem(j_stream, "omitted_packets");
+                    j_start_time = cJSON_GetObjectItem(j_stream, "start_time");
+                    j_end_time = cJSON_GetObjectItem(j_stream, "end_time");
+
+                    if (j_id == NULL || j_bytes == NULL || j_retransmits == NULL || j_jitter == NULL || j_errors == NULL || j_packets == NULL) {
+
+                        i_errno = IERECVRESULTS;
+                        r = -1;
+                    } else if ( (j_omitted_errors == NULL && j_omitted_packets != NULL) || (j_omitted_errors != NULL && j_omitted_packets == NULL) ) {
+                        /* For backward compatibility allow to not receive "omitted" statistcs */
+                        i_errno = IERECVRESULTS;
+                        r = -1;
+                    } else {
+
+                        sid = j_id->valueint;
+                        bytes_transferred = j_bytes->valueint;
+                        retransmits = j_retransmits->valueint;
+                        jitter = j_jitter->valuedouble;
+                        cerror = j_errors->valueint;
+                        pcount = j_packets->valueint;
+                        if (j_omitted_packets != NULL) {
+                            omitted_cerror = j_omitted_errors->valueint;
+                            omitted_pcount = j_omitted_packets->valueint;
+                        }
+
+                        SLIST_FOREACH(sp, &test->streams, streams) {
+
+                            if (sp->id == sid) break;
+
+                            if (sp == NULL) {
+
+                                i_errno = IESTREAMID;
+                                r = -1;
+                            } else {
+
+                                if (sp->sender) {
+
+                                    sp->jitter = jitter;
+                                    sp->cnt_error = cerror;
+                                    sp->peer_packet_count = pcount;
+                                    sp->result->bytes_received = bytes_transferred;
                                     if (j_omitted_packets != NULL) {
                                         sp->omitted_cnt_error = omitted_cerror;
                                         sp->peer_omitted_packet_count = omitted_pcount;
@@ -2616,59 +2632,60 @@ get_results(struct iperf_test *test)
                                             sp->omitted_cnt_error = sp->cnt_error;
                                         }
                                     }
-                    /*
-                     * We have to handle the possibility that
-                     * start_time and end_time might not be
-                     * available; this is the case for older (pre-3.2)
-                     * servers.
-                     *
-                     * We need to have result structure members to hold
-                     * the both sides' start_time and end_time.
-                     */
-                    if (j_start_time && j_end_time) {
-                    sp->result->receiver_time = j_end_time->valuedouble - j_start_time->valuedouble;
-                    }
-                    else {
-                    sp->result->receiver_time = 0.0;
-                    }
-                } else {
-                    sp->peer_packet_count = pcount;
-                    sp->result->bytes_sent = bytes_transferred;
-                    sp->result->stream_retrans = retransmits;
+                                    /*
+                                    * We have to handle the possibility that
+                                    * start_time and end_time might not be
+                                    * available; this is the case for older (pre-3.2)
+                                    * servers.
+                                    *
+                                    * We need to have result structure members to hold
+                                    * the both sides' start_time and end_time.
+                                    */
+                                    if (j_start_time && j_end_time) {
+                                        sp->result->receiver_time = j_end_time->valuedouble - j_start_time->valuedouble;
+                                    }
+                                    else {
+                                        sp->result->receiver_time = 0.0;
+                                    }
+                                } else {
+
+                                    sp->peer_packet_count = pcount;
+                                    sp->result->bytes_sent = bytes_transferred;
+                                    sp->result->stream_retrans = retransmits;
                                     if (j_omitted_packets != NULL) {
                                         sp->peer_omitted_packet_count = omitted_pcount;
                                     } else {
                                         sp->peer_omitted_packet_count = sp->peer_packet_count;
                                     }
-                    if (j_start_time && j_end_time) {
-                    sp->result->sender_time = j_end_time->valuedouble - j_start_time->valuedouble;
-                    }
-                    else {
-                    sp->result->sender_time = 0.0;
+                                    if (j_start_time && j_end_time) {
+                                        sp->result->sender_time = j_end_time->valuedouble - j_start_time->valuedouble;
+                                    }
+                                    else {
+                                        sp->result->sender_time = 0.0;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+            }
+            /*
+            * If we're the client and we're supposed to get remote results,
+            * look them up and process accordingly.
+            */
+            if (test->role == 'c' && iperf_get_test_get_server_output(test)) {
+                /* Look for JSON.  If we find it, grab the object so it doesn't get deleted. */
+                j_server_output = cJSON_DetachItemFromObject(j, "server_output_json");
+                if (j_server_output != NULL) {
+                    test->json_server_output = j_server_output;
+                } else {
+                    /* No JSON, look for textual output.  Make a copy of the text for later. */
+                    j_server_output = cJSON_GetObjectItem(j, "server_output_text");
+                    if (j_server_output != NULL) {
+                        test->server_output_text = strdup(j_server_output->valuestring);
+                    }
                 }
             }
-            }
-        }
-        /*
-         * If we're the client and we're supposed to get remote results,
-         * look them up and process accordingly.
-         */
-        if (test->role == 'c' && iperf_get_test_get_server_output(test)) {
-            /* Look for JSON.  If we find it, grab the object so it doesn't get deleted. */
-            j_server_output = cJSON_DetachItemFromObject(j, "server_output_json");
-            if (j_server_output != NULL) {
-            test->json_server_output = j_server_output;
-            }
-            else {
-            /* No JSON, look for textual output.  Make a copy of the text for later. */
-            j_server_output = cJSON_GetObjectItem(j, "server_output_text");
-            if (j_server_output != NULL) {
-                test->server_output_text = strdup(j_server_output->valuestring);
-            }
-            }
-        }
         }
     }
 
