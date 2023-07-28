@@ -3982,9 +3982,11 @@ iperf_print_results(struct iperf_test *test)
                                         " max_sndr_to_rcvr_time_blk_strt: %f"
                                         " min_sndr_to_rcvr_time_blk_strt: %f"
                                         " avg_sndr_to_rcvr_time_blk_strt: %f"
+                                        " stream_avg_cntr_blk_strt: %d"
                                         " max_sndr_to_rcvr_time_blk_end: %f"
                                         " min_sndr_to_rcvr_time_blk_end: %f"
                                         " avg_sndr_to_rcvr_time_blk_end: %f"
+                                        " stream_avg_cntr_blk_end: %d"
                                     ,
                                     (int64_t) sp->socket,
                                     (double) start_time,
@@ -3996,9 +3998,11 @@ iperf_print_results(struct iperf_test *test)
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_avg_tx_to_rx_time_blk_strt,
+                                    (int) sp->result->stream_avg_cntr_blk_strt,
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_end,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_end,
-                                    (double) sp->result->stream_avg_tx_to_rx_time_blk_end
+                                    (double) sp->result->stream_avg_tx_to_rx_time_blk_end,
+                                    (int) sp->result->stream_avg_cntr_blk_end
                                 )
                             );
 
@@ -4908,6 +4912,13 @@ iperf_json_start(struct iperf_test *test)
     if (test->json_end == NULL)
         return -1;
     cJSON_AddItemToObject(test->json_top, "end", test->json_end);
+
+    test->json_error = cJSON_CreateArray();
+    if (test->json_error == NULL) {
+        return -1;
+    }
+    cJSON_AddItemToObject(test->json_top, "errors", test->json_error);
+
     return 0;
 }
 

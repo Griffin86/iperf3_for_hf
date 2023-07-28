@@ -261,6 +261,26 @@ server_timer_proc(TimerClientData client_data, struct iperf_time *nowP)
     if (test->done)
         return;
     test->done = 1;
+
+    if (!(test->state == DISPLAY_RESULTS || test->state == TEST_END)) {
+
+        signed char current_state = test->state;
+
+        iperf_err(
+            test,
+            "Server timer proc while test still running. "
+                "Temporarily force test to DISPLAY_RESULTS state and "
+                "print results."
+        );
+
+        test->state = DISPLAY_RESULTS;
+
+        if (test->reporter_callback)
+            test->reporter_callback(test);
+
+        test->state = current_state;
+    }
+
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {
         sp = SLIST_FIRST(&test->streams);
@@ -302,6 +322,8 @@ create_server_timers(struct iperf_test * test)
     int max_rtt = 4; /* seconds */
     int state_transitions = 10; /* number of state transitions in iperf3 */
     int grace_period = max_rtt * state_transitions;
+
+    /// TODO: Fix grace period for HF connections
 
     if (iperf_time_now(&now) < 0) {
     i_errno = IEINITTEST;

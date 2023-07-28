@@ -148,8 +148,10 @@ iperf_tcp_recv(struct iperf_stream *sp)
             int old_stream_counter = sp->result->stream_avg_cntr_blk_strt;
             sp->result->stream_avg_cntr_blk_strt++;
 
+            /// TODO: Add time_diff samples to array in json output
+
             sp->result->stream_avg_tx_to_rx_time_blk_strt =
-                (sp->result->stream_avg_tx_to_rx_time_blk_strt * (old_stream_counter / sp->result->stream_avg_cntr_blk_strt)) +
+                (sp->result->stream_avg_tx_to_rx_time_blk_strt * ( (double)old_stream_counter / (double)sp->result->stream_avg_cntr_blk_strt)) +
                 (time_diff_in_secs / sp->result->stream_avg_cntr_blk_strt);
 
         }
@@ -226,7 +228,7 @@ iperf_tcp_recv(struct iperf_stream *sp)
                 sp->result->stream_avg_cntr_blk_end++;
 
                 sp->result->stream_avg_tx_to_rx_time_blk_end =
-                    (sp->result->stream_avg_tx_to_rx_time_blk_end * (old_stream_counter / sp->result->stream_avg_cntr_blk_end)) +
+                    (sp->result->stream_avg_tx_to_rx_time_blk_end * ((double)old_stream_counter / (double)sp->result->stream_avg_cntr_blk_end)) +
                     (time_diff_in_secs / sp->result->stream_avg_cntr_blk_end);
             }
 

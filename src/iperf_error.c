@@ -57,21 +57,32 @@ iperf_err(struct iperf_test *test, const char *format, ...)
 
     va_start(argp, format);
     vsnprintf(str, sizeof(str), format, argp);
-    if (test != NULL && test->json_output && test->json_top != NULL)
-	cJSON_AddStringToObject(test->json_top, "error", str);
-    else {
-	if (test && test->outfile && test->outfile != stdout) {
-	    if (ct) {
-		fprintf(test->outfile, "%s", ct);
-	    }
-	    fprintf(test->outfile, "iperf3: %s\n", str);
-	}
-	else {
-	    if (ct) {
-		fprintf(stderr, "%s", ct);
-	    }
-	    fprintf(stderr, "iperf3: %s\n", str);
-	}
+    if (test != NULL &&
+        test->json_output &&
+        test->json_top != NULL &&
+        test->json_error != NULL
+        ) {
+
+        // If json_error is an Array, the err_num_str doesn't actually matter
+
+        char err_num_str[1000];
+        snprintf(err_num_str, sizeof(err_num_str), "error_%d", ++(test->last_err_num));
+
+        cJSON_AddStringToObject(test->json_error, err_num_str, str);
+
+    } else {
+        if (test && test->outfile && test->outfile != stdout) {
+            if (ct) {
+                fprintf(test->outfile, "%s", ct);
+            }
+            fprintf(test->outfile, "iperf3: %s\n", str);
+        }
+        else {
+            if (ct) {
+                fprintf(stderr, "%s", ct);
+            }
+            fprintf(stderr, "iperf3: %s\n", str);
+        }
     }
     va_end(argp);
 }
@@ -98,7 +109,7 @@ iperf_errexit(struct iperf_test *test, const char *format, ...)
     vsnprintf(str, sizeof(str), format, argp);
     if (test != NULL && test->json_output) {
         if (test->json_top != NULL) {
-	    cJSON_AddStringToObject(test->json_top, "error", str);
+            cJSON_AddStringToObject(test->json_top, "error_exit", str);
         }
 	iperf_json_finish(test);
     } else
@@ -456,7 +467,7 @@ iperf_strerror(int int_errno)
             break;
     case IEHOSTDEV:
 	    snprintf(errstr, len, "host device name (ip%%<dev>) is supported (and required) only for IPv6 link-local address");
-            break;        
+            break;
 	case IENOMSG:
 	    snprintf(errstr, len, "idle timeout for receiving data");
             break;

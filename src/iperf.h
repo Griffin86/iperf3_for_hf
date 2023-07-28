@@ -406,6 +406,9 @@ struct iperf_test
     cJSON *json_intervals;
     cJSON *json_end;
 
+    cJSON *json_error;
+    int last_err_num;
+
     /* Server output (use on client side only) */
     char *server_output_text;
     cJSON *json_server_output;
