@@ -3370,8 +3370,24 @@ iperf_stats_callback(struct iperf_test *test)
                         temp.rtt < rp->stream_min_rtt) {
                         rp->stream_min_rtt = temp.rtt;
                     }
-                    rp->stream_sum_rtt += temp.rtt;
-                    rp->stream_count_rtt++;
+
+                    if (temp.bytes_transferred > 0) {
+
+                        // Only sum and count the RTT if bytes were transferred
+                        // (Determined via inspection that the RTT seems to only
+                        //  change in intervals when bytes were transferred)
+
+                        // This is probably not a true '1-to-1' relation
+                        // (Although it could be based on the RTT calculation in
+                        //  the kernel) but it provides a 'good enough' approximation
+                        // to avoid 'skewing' the RTT average by 'overusing' a single
+                        // measurement. (Kernel TCP_INFO will always return last measured
+                        // RTT value - without a sure fire way of knowing if the value has been
+                        // updated since the last tcp_info call or not)
+
+                        rp->stream_sum_rtt += temp.rtt;
+                        rp->stream_count_rtt++;
+                    }
 
                     temp.rttvar = get_rttvar(&temp);
                     temp.pmtu = get_pmtu(&temp);
@@ -3863,6 +3879,8 @@ iperf_print_results(struct iperf_test *test)
                                         " max_rtt:  %d"
                                         " min_rtt:  %d"
                                         " mean_rtt:  %d"
+                                        " sum_rtt: %d"
+                                        " count_rtt: %d"
                                         " sender: %b",
                                         (int64_t) sp->socket,
                                         (double) start_time,
@@ -3876,6 +3894,8 @@ iperf_print_results(struct iperf_test *test)
                                         (int64_t) sp->result->stream_max_rtt,
                                         (int64_t) sp->result->stream_min_rtt,
                                         (int64_t) ((sp->result->stream_count_rtt == 0) ? 0 : sp->result->stream_sum_rtt / sp->result->stream_count_rtt),
+                                        (int64_t) sp->result->stream_sum_rtt,
+                                        (int64_t) sp->result->stream_count_rtt,
                                         stream_must_be_sender
                                     )
                                 );
