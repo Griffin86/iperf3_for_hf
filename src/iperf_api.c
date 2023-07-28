@@ -3631,6 +3631,9 @@ iperf_print_results(struct iperf_test *test)
 
     cJSON *json_summary_streams = NULL;
 
+    cJSON* json_sender_to_receiver_time_samples_blk_strt = NULL;
+    cJSON* json_sender_to_receiver_time_samples_blk_end = NULL;
+
     int lower_mode, upper_mode;
     int current_mode;
 
@@ -3648,6 +3651,17 @@ iperf_print_results(struct iperf_test *test)
             return;
 
         cJSON_AddItemToObject(test->json_end, "streams", json_summary_streams);
+
+        json_sender_to_receiver_time_samples_blk_strt = cJSON_CreateArray();
+        json_sender_to_receiver_time_samples_blk_end = cJSON_CreateArray();
+
+        if (json_sender_to_receiver_time_samples_blk_strt == NULL ||
+            json_sender_to_receiver_time_samples_blk_end == NULL
+            ) {
+
+            return;
+        }
+
     } else {
         iperf_printf(test, "%s", report_bw_separator);
         if (test->verbose)
@@ -3966,7 +3980,7 @@ iperf_print_results(struct iperf_test *test)
 
                     if (test->protocol->id == Ptcp || test->protocol->id == Psctp) {
                         /* Receiver summary, TCP and SCTP */
-                        if (test->json_output)
+                        if (test->json_output) {
 
                             cJSON_AddItemToObject(
                                 json_summary_stream,
@@ -3982,11 +3996,11 @@ iperf_print_results(struct iperf_test *test)
                                         " max_sndr_to_rcvr_time_blk_strt: %f"
                                         " min_sndr_to_rcvr_time_blk_strt: %f"
                                         " avg_sndr_to_rcvr_time_blk_strt: %f"
-                                        " stream_avg_cntr_blk_strt: %d"
+                                        " stream_sample_cntr_blk_strt: %d"
                                         " max_sndr_to_rcvr_time_blk_end: %f"
                                         " min_sndr_to_rcvr_time_blk_end: %f"
                                         " avg_sndr_to_rcvr_time_blk_end: %f"
-                                        " stream_avg_cntr_blk_end: %d"
+                                        " stream_sample_cntr_blk_end: %d"
                                     ,
                                     (int64_t) sp->socket,
                                     (double) start_time,
@@ -3998,21 +4012,64 @@ iperf_print_results(struct iperf_test *test)
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_avg_tx_to_rx_time_blk_strt,
-                                    (int) sp->result->stream_avg_cntr_blk_strt,
+                                    (int) sp->result->stream_sample_cntr_blk_strt,
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_end,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_end,
                                     (double) sp->result->stream_avg_tx_to_rx_time_blk_end,
-                                    (int) sp->result->stream_avg_cntr_blk_end
+                                    (int) sp->result->stream_sample_cntr_blk_end
                                 )
                             );
 
-                        else
+                                {
+                                    for (int loop_samples_blk_start = 0;
+                                        loop_samples_blk_start < sp->result->stream_sample_cntr_blk_strt;
+                                        ++loop_samples_blk_start
+                                        ) {
+
+                                        cJSON_AddNumberToObject(
+                                            json_sender_to_receiver_time_samples_blk_strt,
+                                            "sample",
+                                            sp->result->stream_samples_tx_to_rx_time_blk_strt[loop_samples_blk_start]
+                                        );
+
+                                    }
+
+                                    cJSON_AddItemToObject(
+                                        json_summary_stream,
+                                        "samples_max_sndr_to_rcvr_time_blk_strt",
+                                        json_sender_to_receiver_time_samples_blk_strt
+                                    );
+                                }
+
+                                {
+                                    for (int loop_samples_blk_end = 0;
+                                        loop_samples_blk_end < sp->result->stream_sample_cntr_blk_end;
+                                        ++loop_samples_blk_end
+                                        ) {
+
+                                        cJSON_AddNumberToObject(
+                                            json_sender_to_receiver_time_samples_blk_end,
+                                            "sample",
+                                            sp->result->stream_samples_tx_to_rx_time_blk_end[loop_samples_blk_end]
+                                        );
+
+                                    }
+
+                                    cJSON_AddItemToObject(
+                                        json_summary_stream,
+                                        "samples_max_sndr_to_rcvr_time_blk_end",
+                                        json_sender_to_receiver_time_samples_blk_end
+                                    );
+                                }
+
+                        } else {
                             if (test->role == 's' && sp->sender) {
                                 if (test->verbose)
                                     iperf_printf(test, report_receiver_not_available_format, sp->socket);
                             } else {
                                 iperf_printf(test, report_bw_format, sp->socket, mbuf, start_time, receiver_time, ubuf, nbuf, report_receiver);
                             }
+                        }
                     } else {
                         /*
                         * Receiver summary, UDP.  Note that JSON was emitted with

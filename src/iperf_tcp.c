@@ -133,6 +133,9 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
             double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_start);
 
+            sp->result->stream_samples_tx_to_rx_time_blk_strt[sp->result->stream_sample_cntr_blk_strt] =
+                time_diff_in_secs;
+
             if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs) {
 
                 sp->result->stream_max_tx_to_rx_time_blk_strt = time_diff_in_secs;
@@ -145,14 +148,12 @@ iperf_tcp_recv(struct iperf_stream *sp)
                 sp->result->stream_min_tx_to_rx_time_blk_strt = time_diff_in_secs;
             }
 
-            int old_stream_counter = sp->result->stream_avg_cntr_blk_strt;
-            sp->result->stream_avg_cntr_blk_strt++;
-
-            /// TODO: Add time_diff samples to array in json output
+            int old_stream_counter = sp->result->stream_sample_cntr_blk_strt;
+            sp->result->stream_sample_cntr_blk_strt++;
 
             sp->result->stream_avg_tx_to_rx_time_blk_strt =
-                (sp->result->stream_avg_tx_to_rx_time_blk_strt * ( (double)old_stream_counter / (double)sp->result->stream_avg_cntr_blk_strt)) +
-                (time_diff_in_secs / sp->result->stream_avg_cntr_blk_strt);
+                (sp->result->stream_avg_tx_to_rx_time_blk_strt * ( (double)old_stream_counter / (double)sp->result->stream_sample_cntr_blk_strt)) +
+                (time_diff_in_secs / sp->result->stream_sample_cntr_blk_strt);
 
         }
 
@@ -212,6 +213,9 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
                 double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_end);
 
+                sp->result->stream_samples_tx_to_rx_time_blk_end[sp->result->stream_sample_cntr_blk_end] =
+                    time_diff_in_secs;
+
                 if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs) {
 
                     sp->result->stream_max_tx_to_rx_time_blk_end = time_diff_in_secs;
@@ -224,12 +228,12 @@ iperf_tcp_recv(struct iperf_stream *sp)
                     sp->result->stream_min_tx_to_rx_time_blk_end = time_diff_in_secs;
                 }
 
-                int old_stream_counter = sp->result->stream_avg_cntr_blk_end;
-                sp->result->stream_avg_cntr_blk_end++;
+                int old_stream_counter = sp->result->stream_sample_cntr_blk_end;
+                sp->result->stream_sample_cntr_blk_end++;
 
                 sp->result->stream_avg_tx_to_rx_time_blk_end =
-                    (sp->result->stream_avg_tx_to_rx_time_blk_end * ((double)old_stream_counter / (double)sp->result->stream_avg_cntr_blk_end)) +
-                    (time_diff_in_secs / sp->result->stream_avg_cntr_blk_end);
+                    (sp->result->stream_avg_tx_to_rx_time_blk_end * ((double)old_stream_counter / (double)sp->result->stream_sample_cntr_blk_end)) +
+                    (time_diff_in_secs / sp->result->stream_sample_cntr_blk_end);
             }
 
             // Reset buffer read offset
