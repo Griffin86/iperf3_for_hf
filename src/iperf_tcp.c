@@ -133,8 +133,11 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
             double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_start);
 
-            sp->result->stream_samples_tx_to_rx_time_blk_strt[sp->result->stream_sample_cntr_blk_strt] =
-                time_diff_in_secs;
+            if (sp->result->stream_sample_cntr_blk_strt < 2000) {
+
+                sp->result->stream_samples_tx_to_rx_time_blk_strt[sp->result->stream_sample_cntr_blk_strt] =
+                    time_diff_in_secs;
+            }
 
             if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs) {
 
@@ -213,8 +216,11 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
                 double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_end);
 
-                sp->result->stream_samples_tx_to_rx_time_blk_end[sp->result->stream_sample_cntr_blk_end] =
-                    time_diff_in_secs;
+                if (sp->result->stream_sample_cntr_blk_end < 2000) {
+
+                    sp->result->stream_samples_tx_to_rx_time_blk_end[sp->result->stream_sample_cntr_blk_end] =
+                        time_diff_in_secs;
+                }
 
                 if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs) {
 
