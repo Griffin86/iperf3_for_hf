@@ -133,10 +133,13 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
             double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_start);
 
-            if (sp->result->stream_sample_cntr_blk_strt < 2000) {
+            if (sp->test->json_output) {
 
-                sp->result->stream_samples_tx_to_rx_time_blk_strt[sp->result->stream_sample_cntr_blk_strt] =
-                    time_diff_in_secs;
+                cJSON_AddNumberToObject(
+                    sp->result->json_sndr_to_rcvr_time_smpls_blk_strt,
+                    "sample", // name doesn't actually matter here
+                    time_diff_in_secs
+                );
             }
 
             if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs) {
@@ -216,10 +219,13 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
                 double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_end);
 
-                if (sp->result->stream_sample_cntr_blk_end < 2000) {
+                if (sp->test->json_output) {
 
-                    sp->result->stream_samples_tx_to_rx_time_blk_end[sp->result->stream_sample_cntr_blk_end] =
-                        time_diff_in_secs;
+                    cJSON_AddNumberToObject(
+                        sp->result->json_sndr_to_rcvr_time_smpls_blk_end,
+                        "sample", // name doesn't actually matter here
+                        time_diff_in_secs
+                    );
                 }
 
                 if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs) {

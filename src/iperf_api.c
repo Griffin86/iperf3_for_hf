@@ -3387,6 +3387,50 @@ iperf_stats_callback(struct iperf_test *test)
 
                         rp->stream_sum_rtt += temp.rtt;
                         rp->stream_count_rtt++;
+
+                        if (test->json_output) {
+
+                            struct iperf_time
+                                time_now,
+                                time_diff_rtt_samples;
+
+                            double time_diff_in_secs;
+
+                            iperf_time_now(&time_now);
+
+                            if (iperf_time_in_secs(&rp->time_of_last_rtt_sample) == 0.0) {
+
+                                time_diff_in_secs = 0.0;
+                            } else {
+
+                                if (iperf_time_diff(
+                                        &time_now,
+                                        &rp->time_of_last_rtt_sample,
+                                        &time_diff_rtt_samples
+                                        )
+                                    ) {
+
+                                    iperf_err(
+                                        test,
+                                        "Something went wrong with the time diff for RTT measurement samples. "
+                                            "Current time %f earlier than last sample time %f\n",
+                                        iperf_time_in_secs(&time_now),
+                                        iperf_time_in_secs(&rp->time_of_last_rtt_sample)
+                                    );
+                                }
+
+                                time_diff_in_secs = iperf_time_in_secs(&time_diff_rtt_samples);
+                            }
+
+                            cJSON_AddNumberToObject(
+                                sp->result->json_sndr_time_smpls_btwn_rtt_updts,
+                                "sample", // name doesn't actually matter here
+                                time_diff_in_secs
+                            );
+
+                            rp->time_of_last_rtt_sample = time_now;
+
+                        }
                     }
 
                     temp.rttvar = get_rttvar(&temp);
@@ -3647,9 +3691,6 @@ iperf_print_results(struct iperf_test *test)
 
     cJSON *json_summary_streams = NULL;
 
-    cJSON* json_sender_to_receiver_time_samples_blk_strt = NULL;
-    cJSON* json_sender_to_receiver_time_samples_blk_end = NULL;
-
     int lower_mode, upper_mode;
     int current_mode;
 
@@ -3667,16 +3708,6 @@ iperf_print_results(struct iperf_test *test)
             return;
 
         cJSON_AddItemToObject(test->json_end, "streams", json_summary_streams);
-
-        json_sender_to_receiver_time_samples_blk_strt = cJSON_CreateArray();
-        json_sender_to_receiver_time_samples_blk_end = cJSON_CreateArray();
-
-        if (json_sender_to_receiver_time_samples_blk_strt == NULL ||
-            json_sender_to_receiver_time_samples_blk_end == NULL
-            ) {
-
-            return;
-        }
 
     } else {
         iperf_printf(test, "%s", report_bw_separator);
@@ -3899,6 +3930,13 @@ iperf_print_results(struct iperf_test *test)
                                         stream_must_be_sender
                                     )
                                 );
+
+                                cJSON_AddItemToObject(
+                                    json_summary_stream,
+                                    "samples_sndr_time_smpls_btwn_rtt_updts",
+                                    sp->result->json_sndr_time_smpls_btwn_rtt_updts
+                                );
+
                             } else {
                                 if (test->role == 's' && !sp->sender) {
                                     if (test->verbose)
@@ -4040,47 +4078,17 @@ iperf_print_results(struct iperf_test *test)
                                 )
                             );
 
-                                {
-                                    for (int loop_samples_blk_start = 0;
-                                        loop_samples_blk_start < sp->result->stream_sample_cntr_blk_strt;
-                                        ++loop_samples_blk_start
-                                        ) {
+                            cJSON_AddItemToObject(
+                                json_summary_stream,
+                                "samples_max_sndr_to_rcvr_time_blk_strt",
+                                sp->result->json_sndr_to_rcvr_time_smpls_blk_strt
+                            );
 
-                                        cJSON_AddNumberToObject(
-                                            json_sender_to_receiver_time_samples_blk_strt,
-                                            "sample",
-                                            sp->result->stream_samples_tx_to_rx_time_blk_strt[loop_samples_blk_start]
-                                        );
-
-                                    }
-
-                                    cJSON_AddItemToObject(
-                                        json_summary_stream,
-                                        "samples_max_sndr_to_rcvr_time_blk_strt",
-                                        json_sender_to_receiver_time_samples_blk_strt
-                                    );
-                                }
-
-                                {
-                                    for (int loop_samples_blk_end = 0;
-                                        loop_samples_blk_end < sp->result->stream_sample_cntr_blk_end;
-                                        ++loop_samples_blk_end
-                                        ) {
-
-                                        cJSON_AddNumberToObject(
-                                            json_sender_to_receiver_time_samples_blk_end,
-                                            "sample",
-                                            sp->result->stream_samples_tx_to_rx_time_blk_end[loop_samples_blk_end]
-                                        );
-
-                                    }
-
-                                    cJSON_AddItemToObject(
-                                        json_summary_stream,
-                                        "samples_max_sndr_to_rcvr_time_blk_end",
-                                        json_sender_to_receiver_time_samples_blk_end
-                                    );
-                                }
+                            cJSON_AddItemToObject(
+                                json_summary_stream,
+                                "samples_max_sndr_to_rcvr_time_blk_end",
+                                sp->result->json_sndr_to_rcvr_time_smpls_blk_end
+                            );
 
                         } else {
                             if (test->role == 's' && sp->sender) {
@@ -4567,6 +4575,32 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
 
     memset(sp->result, 0, sizeof(struct iperf_stream_result));
     TAILQ_INIT(&sp->result->interval_results);
+
+    /* Init stream result JSON objects */
+
+    if (sp->test->json_output) {
+
+        sp->result->json_sndr_time_smpls_btwn_rtt_updts = cJSON_CreateArray();
+        if (sp->result->json_sndr_time_smpls_btwn_rtt_updts == NULL) {
+            i_errno = IECREATESTREAM;
+            return NULL;
+        }
+        // Item added to JSON object when results are printed
+
+        sp->result->json_sndr_to_rcvr_time_smpls_blk_strt = cJSON_CreateArray();
+        if (sp->result->json_sndr_to_rcvr_time_smpls_blk_strt == NULL) {
+            i_errno = IECREATESTREAM;
+            return NULL;
+        }
+        // Item added to JSON object when results are printed
+
+        sp->result->json_sndr_to_rcvr_time_smpls_blk_end = cJSON_CreateArray();
+        if (sp->result->json_sndr_to_rcvr_time_smpls_blk_end == NULL) {
+            i_errno = IECREATESTREAM;
+            return NULL;
+        }
+        // Item added to JSON object when results are printed
+    }
 
     /* Create and randomize the buffer */
     sp->buffer_fd = mkstemp(template);

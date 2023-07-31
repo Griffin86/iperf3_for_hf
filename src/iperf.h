@@ -120,6 +120,12 @@ struct iperf_stream_result
     iperf_size_t bytes_sent_omit;
     long stream_prev_total_retrans;
     long stream_retrans;
+
+
+    /* cJSON handle for samples */
+    cJSON* json_sndr_time_smpls_btwn_rtt_updts;
+    struct iperf_time time_of_last_rtt_sample;
+
     long stream_max_rtt;
     long stream_min_rtt;
     long stream_sum_rtt;
@@ -127,7 +133,8 @@ struct iperf_stream_result
     long stream_max_snd_cwnd;
     long stream_max_snd_wnd;
 
-    double stream_samples_tx_to_rx_time_blk_strt[2000];
+    /* cJSON handle for samples */
+    cJSON* json_sndr_to_rcvr_time_smpls_blk_strt;
 
     double stream_max_tx_to_rx_time_blk_strt;
     double stream_min_tx_to_rx_time_blk_strt;
@@ -135,7 +142,8 @@ struct iperf_stream_result
     double stream_avg_tx_to_rx_time_blk_strt;
     int stream_sample_cntr_blk_strt;
 
-    double stream_samples_tx_to_rx_time_blk_end[2000];
+    /* cJSON handle for samples */
+    cJSON* json_sndr_to_rcvr_time_smpls_blk_end;
 
     double stream_max_tx_to_rx_time_blk_end;
     double stream_min_tx_to_rx_time_blk_end;
