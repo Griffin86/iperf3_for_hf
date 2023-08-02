@@ -324,7 +324,7 @@ create_server_timers(struct iperf_test * test)
     // int grace_period = max_rtt * state_transitions;
 
     /// Fix grace period for HF connections
-    int grace_period = 120;
+    int grace_period = 800;
 
     if (iperf_time_now(&now) < 0) {
     i_errno = IEINITTEST;
