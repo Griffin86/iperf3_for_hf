@@ -2605,64 +2605,63 @@ get_results(struct iperf_test *test)
                         }
 
                         SLIST_FOREACH(sp, &test->streams, streams) {
-
                             if (sp->id == sid) break;
+                        }
 
-                            if (sp == NULL) {
+                        if (sp == NULL) {
 
-                                i_errno = IESTREAMID;
-                                r = -1;
+                            i_errno = IESTREAMID;
+                            r = -1;
+                        } else {
+
+                            if (sp->sender) {
+
+                                sp->jitter = jitter;
+                                sp->cnt_error = cerror;
+                                sp->peer_packet_count = pcount;
+                                sp->result->bytes_received = bytes_transferred;
+                                if (j_omitted_packets != NULL) {
+                                    sp->omitted_cnt_error = omitted_cerror;
+                                    sp->peer_omitted_packet_count = omitted_pcount;
+                                } else {
+                                    sp->peer_omitted_packet_count = sp->omitted_packet_count;
+                                    if (sp->peer_omitted_packet_count > 0) {
+                                        /* -1 indicates unknown error count since it includes the omitted count */
+                                        sp->omitted_cnt_error = (sp->cnt_error > 0) ? -1 : 0;
+                                    } else {
+                                        sp->omitted_cnt_error = sp->cnt_error;
+                                    }
+                                }
+                                /*
+                                * We have to handle the possibility that
+                                * start_time and end_time might not be
+                                * available; this is the case for older (pre-3.2)
+                                * servers.
+                                *
+                                * We need to have result structure members to hold
+                                * the both sides' start_time and end_time.
+                                */
+                                if (j_start_time && j_end_time) {
+                                    sp->result->receiver_time = j_end_time->valuedouble - j_start_time->valuedouble;
+                                }
+                                else {
+                                    sp->result->receiver_time = 0.0;
+                                }
                             } else {
 
-                                if (sp->sender) {
-
-                                    sp->jitter = jitter;
-                                    sp->cnt_error = cerror;
-                                    sp->peer_packet_count = pcount;
-                                    sp->result->bytes_received = bytes_transferred;
-                                    if (j_omitted_packets != NULL) {
-                                        sp->omitted_cnt_error = omitted_cerror;
-                                        sp->peer_omitted_packet_count = omitted_pcount;
-                                    } else {
-                                        sp->peer_omitted_packet_count = sp->omitted_packet_count;
-                                        if (sp->peer_omitted_packet_count > 0) {
-                                            /* -1 indicates unknown error count since it includes the omitted count */
-                                            sp->omitted_cnt_error = (sp->cnt_error > 0) ? -1 : 0;
-                                        } else {
-                                            sp->omitted_cnt_error = sp->cnt_error;
-                                        }
-                                    }
-                                    /*
-                                    * We have to handle the possibility that
-                                    * start_time and end_time might not be
-                                    * available; this is the case for older (pre-3.2)
-                                    * servers.
-                                    *
-                                    * We need to have result structure members to hold
-                                    * the both sides' start_time and end_time.
-                                    */
-                                    if (j_start_time && j_end_time) {
-                                        sp->result->receiver_time = j_end_time->valuedouble - j_start_time->valuedouble;
-                                    }
-                                    else {
-                                        sp->result->receiver_time = 0.0;
-                                    }
+                                sp->peer_packet_count = pcount;
+                                sp->result->bytes_sent = bytes_transferred;
+                                sp->result->stream_retrans = retransmits;
+                                if (j_omitted_packets != NULL) {
+                                    sp->peer_omitted_packet_count = omitted_pcount;
                                 } else {
-
-                                    sp->peer_packet_count = pcount;
-                                    sp->result->bytes_sent = bytes_transferred;
-                                    sp->result->stream_retrans = retransmits;
-                                    if (j_omitted_packets != NULL) {
-                                        sp->peer_omitted_packet_count = omitted_pcount;
-                                    } else {
-                                        sp->peer_omitted_packet_count = sp->peer_packet_count;
-                                    }
-                                    if (j_start_time && j_end_time) {
-                                        sp->result->sender_time = j_end_time->valuedouble - j_start_time->valuedouble;
-                                    }
-                                    else {
-                                        sp->result->sender_time = 0.0;
-                                    }
+                                    sp->peer_omitted_packet_count = sp->peer_packet_count;
+                                }
+                                if (j_start_time && j_end_time) {
+                                    sp->result->sender_time = j_end_time->valuedouble - j_start_time->valuedouble;
+                                }
+                                else {
+                                    sp->result->sender_time = 0.0;
                                 }
                             }
                         }
