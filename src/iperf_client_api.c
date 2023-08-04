@@ -672,54 +672,51 @@ iperf_run_client(struct iperf_test * test)
                     )
                 ) {
 
-                    // If test is byte or block limited, loop through all stream sockets
-                    // If any socket still has pending bytes, do not end test
+                // If test is byte or block limited, loop through all stream sockets
+                // If any socket still has pending bytes, do not end test
 
-                    int end_test_flag = 1;
+                int end_test_flag = 1;
 
-                    if ((test->settings->bytes != 0) || (test->settings->blocks != 0)) {
+                if ((test->settings->bytes != 0) || (test->settings->blocks != 0)) {
+
+                    SLIST_FOREACH(sp, &test->streams, streams) {
+
+                        int pending_bytes_in_socket;
+                        if (ioctl(sp->socket, TIOCOUTQ, &pending_bytes_in_socket) < 0) {
+
+                            iperf_err(
+                                sp->test,
+                                "Failure when reading TIOCOUTQ. Socket: %d "
+                                    "Error: %s[%d]\n",
+                                sp->socket,
+                                strerror(errno),
+                                errno
+                            );
+                        } else if (pending_bytes_in_socket > 0) {
+
+                            end_test_flag = 0;
+                        }
+                    }
+                }
+
+                if (end_test_flag) {
+
+                    // Unset non-blocking for non-UDP tests
+                    if (test->protocol->id != Pudp) {
 
                         SLIST_FOREACH(sp, &test->streams, streams) {
-
-                            int pending_bytes_in_socket;
-                            if (ioctl(sp->socket, TIOCOUTQ, &pending_bytes_in_socket) < 0) {
-
-                                iperf_err(
-                                    sp->test,
-                                    "Failure when reading TIOCOUTQ. Socket: %d "
-                                        "Error: %s[%d]\n",
-                                    sp->socket,
-                                    strerror(errno),
-                                    errno
-                                );
-                            } else {
-
-                                if (pending_bytes_in_socket > 0) {
-
-                                    end_test_flag = 0;
-                                }
-                            }
+                            setnonblocking(sp->socket, 0);
                         }
                     }
 
-                    if (end_test_flag) {
+                    /* Yes, done!  Send TEST_END. */
+                    test->done = 1;
+                    cpu_util(test->cpu_util);
+                    test->stats_callback(test);
 
-                        // Unset non-blocking for non-UDP tests
-                        if (test->protocol->id != Pudp) {
-
-                            SLIST_FOREACH(sp, &test->streams, streams) {
-                                setnonblocking(sp->socket, 0);
-                            }
-                        }
-
-                        /* Yes, done!  Send TEST_END. */
-                        test->done = 1;
-                        cpu_util(test->cpu_util);
-                        test->stats_callback(test);
-
-                        if (iperf_set_send_state(test, TEST_END) != 0)
-                            goto cleanup_and_fail;
-                    }
+                    if (iperf_set_send_state(test, TEST_END) != 0)
+                        goto cleanup_and_fail;
+                }
             }
         }
 
