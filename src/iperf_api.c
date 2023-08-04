@@ -4050,14 +4050,26 @@ iperf_print_results(struct iperf_test *test)
                                         " bytes: %d"
                                         " bits_per_second: %f"
                                         " sender: %b"
+
                                         " max_sndr_to_rcvr_time_blk_strt: %f"
                                         " min_sndr_to_rcvr_time_blk_strt: %f"
                                         " avg_sndr_to_rcvr_time_blk_strt: %f"
-                                        " stream_sample_cntr_blk_strt: %d"
+                                        " tx_rx_time_smpl_cntr_blk_strt: %d"
+
+                                        " max_jitter_blk_strt: %f"
+                                        " min_jitter_blk_strt: %f"
+                                        " avg_jitter_blk_strt: %f"
+                                        " jitter_smpl_cntr_blk_strt: %d"
+
                                         " max_sndr_to_rcvr_time_blk_end: %f"
                                         " min_sndr_to_rcvr_time_blk_end: %f"
                                         " avg_sndr_to_rcvr_time_blk_end: %f"
-                                        " stream_sample_cntr_blk_end: %d"
+                                        " tx_rx_time_smpl_cntr_blk_end: %d"
+
+                                        " max_jitter_blk_end: %f"
+                                        " min_jitter_blk_end: %f"
+                                        " avg_jitter_blk_end: %f"
+                                        " jitter_smpl_cntr_blk_end: %d"
                                     ,
                                     (int64_t) sp->socket,
                                     (double) start_time,
@@ -4066,27 +4078,51 @@ iperf_print_results(struct iperf_test *test)
                                     (int64_t) bytes_received,
                                     bandwidth * 8,
                                     stream_must_be_sender,
+
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_strt,
                                     (double) sp->result->stream_avg_tx_to_rx_time_blk_strt,
-                                    (int) sp->result->stream_sample_cntr_blk_strt,
+                                    (int) sp->result->stream_tx_rx_time_smpl_cntr_blk_strt,
+
+                                    (double) sp->result->stream_max_jitter_blk_strt,
+                                    (double) sp->result->stream_min_jitter_blk_strt,
+                                    (double) sp->result->stream_avg_jitter_blk_strt,
+                                    (int) sp->result->stream_jitter_smpl_cntr_blk_strt,
+
                                     (double) sp->result->stream_max_tx_to_rx_time_blk_end,
                                     (double) sp->result->stream_min_tx_to_rx_time_blk_end,
                                     (double) sp->result->stream_avg_tx_to_rx_time_blk_end,
-                                    (int) sp->result->stream_sample_cntr_blk_end
+                                    (int) sp->result->stream_tx_rx_time_smpl_cntr_blk_end,
+
+                                    (double) sp->result->stream_max_jitter_blk_end,
+                                    (double) sp->result->stream_min_jitter_blk_end,
+                                    (double) sp->result->stream_avg_jitter_blk_end,
+                                    (int) sp->result->stream_jitter_smpl_cntr_blk_end
                                 )
                             );
 
                             cJSON_AddItemToObject(
                                 json_summary_stream,
-                                "samples_max_sndr_to_rcvr_time_blk_strt",
+                                "samples_sndr_to_rcvr_time_blk_strt",
                                 sp->result->json_sndr_to_rcvr_time_smpls_blk_strt
                             );
 
                             cJSON_AddItemToObject(
                                 json_summary_stream,
-                                "samples_max_sndr_to_rcvr_time_blk_end",
+                                "samples_sndr_to_rcvr_jitter_blk_strt",
+                                sp->result->json_sndr_to_rcvr_jitter_smpls_blk_strt
+                            );
+
+                            cJSON_AddItemToObject(
+                                json_summary_stream,
+                                "samples_sndr_to_rcvr_time_blk_end",
                                 sp->result->json_sndr_to_rcvr_time_smpls_blk_end
+                            );
+
+                            cJSON_AddItemToObject(
+                                json_summary_stream,
+                                "samples_sndr_to_rcvr_jitter_blk_end",
+                                sp->result->json_sndr_to_rcvr_jitter_smpls_blk_end
                             );
 
                         } else {
@@ -4593,8 +4629,22 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
         }
         // Item added to JSON object when results are printed
 
+        sp->result->json_sndr_to_rcvr_jitter_smpls_blk_strt = cJSON_CreateArray();
+        if (sp->result->json_sndr_to_rcvr_jitter_smpls_blk_strt == NULL) {
+            i_errno = IECREATESTREAM;
+            return NULL;
+        }
+        // Item added to JSON object when results are printed
+
         sp->result->json_sndr_to_rcvr_time_smpls_blk_end = cJSON_CreateArray();
         if (sp->result->json_sndr_to_rcvr_time_smpls_blk_end == NULL) {
+            i_errno = IECREATESTREAM;
+            return NULL;
+        }
+        // Item added to JSON object when results are printed
+
+        sp->result->json_sndr_to_rcvr_jitter_smpls_blk_end = cJSON_CreateArray();
+        if (sp->result->json_sndr_to_rcvr_jitter_smpls_blk_end == NULL) {
             i_errno = IECREATESTREAM;
             return NULL;
         }

@@ -38,6 +38,7 @@
 #include <sys/select.h>
 #include <limits.h>
 #include <sys/ioctl.h>
+#include <math.h>
 
 #include "iperf.h"
 #include "iperf_api.h"
@@ -131,35 +132,92 @@ iperf_tcp_recv(struct iperf_stream *sp)
 
             }
 
-            double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_start);
+            double time_diff_in_secs_blk_strt = iperf_time_in_secs(&time_diff_blk_start);
 
             if (sp->test->json_output) {
 
                 cJSON_AddNumberToObject(
                     sp->result->json_sndr_to_rcvr_time_smpls_blk_strt,
                     "sample", // name doesn't actually matter here
-                    time_diff_in_secs
+                    time_diff_in_secs_blk_strt
                 );
             }
 
-            if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs) {
+            // Max
+            if (sp->result->stream_max_tx_to_rx_time_blk_strt < time_diff_in_secs_blk_strt) {
 
-                sp->result->stream_max_tx_to_rx_time_blk_strt = time_diff_in_secs;
+                sp->result->stream_max_tx_to_rx_time_blk_strt = time_diff_in_secs_blk_strt;
             }
 
+            // Min
             if (sp->result->stream_min_tx_to_rx_time_blk_strt == 0.0 ||
-                sp->result->stream_min_tx_to_rx_time_blk_strt > time_diff_in_secs
+                sp->result->stream_min_tx_to_rx_time_blk_strt > time_diff_in_secs_blk_strt
                 ) {
 
-                sp->result->stream_min_tx_to_rx_time_blk_strt = time_diff_in_secs;
+                sp->result->stream_min_tx_to_rx_time_blk_strt = time_diff_in_secs_blk_strt;
             }
 
-            int old_stream_counter = sp->result->stream_sample_cntr_blk_strt;
-            sp->result->stream_sample_cntr_blk_strt++;
+            // Average
+            int old_stream_counter = sp->result->stream_tx_rx_time_smpl_cntr_blk_strt;
+            sp->result->stream_tx_rx_time_smpl_cntr_blk_strt++;
 
             sp->result->stream_avg_tx_to_rx_time_blk_strt =
-                (sp->result->stream_avg_tx_to_rx_time_blk_strt * ( (double)old_stream_counter / (double)sp->result->stream_sample_cntr_blk_strt)) +
-                (time_diff_in_secs / sp->result->stream_sample_cntr_blk_strt);
+                (sp->result->stream_avg_tx_to_rx_time_blk_strt * ( (double)old_stream_counter / (double)sp->result->stream_tx_rx_time_smpl_cntr_blk_strt)) +
+                (time_diff_in_secs_blk_strt / sp->result->stream_tx_rx_time_smpl_cntr_blk_strt);
+
+            // Jitter - Block Start
+            if (sp->result->jitter_time_diff_prev_packet_blk_strt != 0.0) {
+
+                // Calculate Jitter Sample - based on RFC 4689
+                // (Although the 'forwarding delay' - time_diff_blk_strt -
+                //  is not technically compliant with the RFC 4689 definition)
+
+                double jitter_smpl_blk_strt =
+                    fabs(time_diff_in_secs_blk_strt - sp->result->jitter_time_diff_prev_packet_blk_strt);
+
+                if (sp->test->json_output) {
+
+                    cJSON_AddNumberToObject(
+                        sp->result->json_sndr_to_rcvr_jitter_smpls_blk_strt,
+                        "sample", // name doesn't actually matter here
+                        jitter_smpl_blk_strt
+                    );
+                }
+
+                // Jitter min
+                if (sp->result->stream_min_jitter_blk_strt == 0.0 ||
+                    sp->result->stream_min_jitter_blk_strt > jitter_smpl_blk_strt
+                    ) {
+
+                    sp->result->stream_min_jitter_blk_strt = jitter_smpl_blk_strt;
+                }
+
+                // Jitter max
+                if (sp->result->stream_max_jitter_blk_strt < jitter_smpl_blk_strt) {
+
+                    sp->result->stream_max_jitter_blk_strt = jitter_smpl_blk_strt;
+                }
+
+                // Average
+                // Counter values
+                int old_stream_jitter_strt_cntr =
+                    sp->result->stream_jitter_smpl_cntr_blk_strt;
+
+                sp->result->stream_jitter_smpl_cntr_blk_strt++;
+
+                // "Running" Average calculation
+                sp->result->stream_avg_jitter_blk_strt =
+                    (sp->result->stream_avg_jitter_blk_strt * ( (double)old_stream_jitter_strt_cntr / (double) sp->result->stream_jitter_smpl_cntr_blk_strt)) +
+                    (jitter_smpl_blk_strt / sp->result->stream_jitter_smpl_cntr_blk_strt);
+
+            } else {
+
+                // First packet - no Jitter calculation possible
+            }
+
+            // Update last packet time diff value
+            sp->result->jitter_time_diff_prev_packet_blk_strt =
+                time_diff_in_secs_blk_strt;
 
         }
 
@@ -217,35 +275,90 @@ iperf_tcp_recv(struct iperf_stream *sp)
                     );
                 }
 
-                double time_diff_in_secs = iperf_time_in_secs(&time_diff_blk_end);
+                double time_diff_in_secs_blk_end = iperf_time_in_secs(&time_diff_blk_end);
 
                 if (sp->test->json_output) {
 
                     cJSON_AddNumberToObject(
                         sp->result->json_sndr_to_rcvr_time_smpls_blk_end,
                         "sample", // name doesn't actually matter here
-                        time_diff_in_secs
+                        time_diff_in_secs_blk_end
                     );
                 }
 
-                if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs) {
+                if (sp->result->stream_max_tx_to_rx_time_blk_end < time_diff_in_secs_blk_end) {
 
-                    sp->result->stream_max_tx_to_rx_time_blk_end = time_diff_in_secs;
+                    sp->result->stream_max_tx_to_rx_time_blk_end = time_diff_in_secs_blk_end;
                 }
 
                 if (sp->result->stream_min_tx_to_rx_time_blk_end == 0.0 ||
-                    sp->result->stream_min_tx_to_rx_time_blk_end > time_diff_in_secs
+                    sp->result->stream_min_tx_to_rx_time_blk_end > time_diff_in_secs_blk_end
                     ) {
 
-                    sp->result->stream_min_tx_to_rx_time_blk_end = time_diff_in_secs;
+                    sp->result->stream_min_tx_to_rx_time_blk_end = time_diff_in_secs_blk_end;
                 }
 
-                int old_stream_counter = sp->result->stream_sample_cntr_blk_end;
-                sp->result->stream_sample_cntr_blk_end++;
+                int old_stream_counter = sp->result->stream_tx_rx_time_smpl_cntr_blk_end;
+                sp->result->stream_tx_rx_time_smpl_cntr_blk_end++;
 
                 sp->result->stream_avg_tx_to_rx_time_blk_end =
-                    (sp->result->stream_avg_tx_to_rx_time_blk_end * ((double)old_stream_counter / (double)sp->result->stream_sample_cntr_blk_end)) +
-                    (time_diff_in_secs / sp->result->stream_sample_cntr_blk_end);
+                    (sp->result->stream_avg_tx_to_rx_time_blk_end * ((double)old_stream_counter / (double)sp->result->stream_tx_rx_time_smpl_cntr_blk_end)) +
+                    (time_diff_in_secs_blk_end / sp->result->stream_tx_rx_time_smpl_cntr_blk_end);
+
+                // Jitter - Block End
+                if (sp->result->jitter_time_diff_prev_packet_blk_end != 0.0) {
+
+                    // Calculate Jitter Sample - based on RFC 4689
+                    // (Although the 'forwarding delay' - time_diff_blk_end -
+                    //  is not technically compliant with the RFC 4689 definition)
+
+                    double jitter_smpl_blk_end =
+                        fabs(time_diff_in_secs_blk_end - sp->result->jitter_time_diff_prev_packet_blk_end);
+
+                    if (sp->test->json_output) {
+
+                        cJSON_AddNumberToObject(
+                            sp->result->json_sndr_to_rcvr_jitter_smpls_blk_end,
+                            "sample", // name doesn't actually matter here
+                            jitter_smpl_blk_end
+                        );
+                    }
+
+                    // Jitter min
+                    if (sp->result->stream_min_jitter_blk_end == 0.0 ||
+                        sp->result->stream_min_jitter_blk_end > jitter_smpl_blk_end
+                        ) {
+
+                        sp->result->stream_min_jitter_blk_end = jitter_smpl_blk_end;
+                    }
+
+                    // Jitter max
+                    if (sp->result->stream_max_jitter_blk_end < jitter_smpl_blk_end) {
+
+                        sp->result->stream_max_jitter_blk_end = jitter_smpl_blk_end;
+                    }
+
+                    // Average
+                    // Counter values
+                    int old_stream_jitter_end_cntr =
+                        sp->result->stream_jitter_smpl_cntr_blk_end;
+
+                    sp->result->stream_jitter_smpl_cntr_blk_end++;
+
+                    // "Running" Average calculation
+                    sp->result->stream_avg_jitter_blk_end =
+                        (sp->result->stream_avg_jitter_blk_end * ( (double)old_stream_jitter_end_cntr / (double) sp->result->stream_jitter_smpl_cntr_blk_end)) +
+                        (jitter_smpl_blk_end / sp->result->stream_jitter_smpl_cntr_blk_end);
+
+                } else {
+
+                    // First packet - no Jitter calculation possible
+                }
+
+                // Update last packet time diff value
+                sp->result->jitter_time_diff_prev_packet_blk_end =
+                    time_diff_in_secs_blk_end;
+
             }
 
             // Reset buffer read offset
