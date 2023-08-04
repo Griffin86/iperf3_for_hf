@@ -3387,47 +3387,15 @@ iperf_stats_callback(struct iperf_test *test)
                         rp->stream_sum_rtt += temp.rtt;
                         rp->stream_count_rtt++;
 
+                        // Record RTT samples in a single JSON array for
+                        // parsing convenience
                         if (test->json_output) {
 
-                            struct iperf_time
-                                time_now,
-                                time_diff_rtt_samples;
-
-                            double time_diff_in_secs;
-
-                            iperf_time_now(&time_now);
-
-                            if (iperf_time_in_secs(&rp->time_of_last_rtt_sample) == 0.0) {
-
-                                time_diff_in_secs = 0.0;
-                            } else {
-
-                                if (iperf_time_diff(
-                                        &time_now,
-                                        &rp->time_of_last_rtt_sample,
-                                        &time_diff_rtt_samples
-                                        )
-                                    ) {
-
-                                    iperf_err(
-                                        test,
-                                        "Something went wrong with the time diff for RTT measurement samples. "
-                                            "Current time %f earlier than last sample time %f\n",
-                                        iperf_time_in_secs(&time_now),
-                                        iperf_time_in_secs(&rp->time_of_last_rtt_sample)
-                                    );
-                                }
-
-                                time_diff_in_secs = iperf_time_in_secs(&time_diff_rtt_samples);
-                            }
-
                             cJSON_AddNumberToObject(
-                                sp->result->json_sndr_time_smpls_btwn_rtt_updts,
+                                sp->result->json_sndr_rtt_smpls,
                                 "sample", // name doesn't actually matter here
-                                time_diff_in_secs
+                                (double) temp.rtt
                             );
-
-                            rp->time_of_last_rtt_sample = time_now;
 
                         }
                     }
@@ -3932,8 +3900,8 @@ iperf_print_results(struct iperf_test *test)
 
                                 cJSON_AddItemToObject(
                                     json_summary_stream,
-                                    "samples_sndr_time_smpls_btwn_rtt_updts",
-                                    sp->result->json_sndr_time_smpls_btwn_rtt_updts
+                                    "samples_sndr_rtt_updts",
+                                    sp->result->json_sndr_rtt_smpls
                                 );
 
                             } else {
@@ -4615,8 +4583,8 @@ iperf_new_stream(struct iperf_test *test, int s, int sender)
 
     if (sp->test->json_output) {
 
-        sp->result->json_sndr_time_smpls_btwn_rtt_updts = cJSON_CreateArray();
-        if (sp->result->json_sndr_time_smpls_btwn_rtt_updts == NULL) {
+        sp->result->json_sndr_rtt_smpls = cJSON_CreateArray();
+        if (sp->result->json_sndr_rtt_smpls == NULL) {
             i_errno = IECREATESTREAM;
             return NULL;
         }

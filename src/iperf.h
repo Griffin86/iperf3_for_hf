@@ -123,8 +123,7 @@ struct iperf_stream_result
 
 
     /* cJSON handle for samples */
-    cJSON* json_sndr_time_smpls_btwn_rtt_updts;
-    struct iperf_time time_of_last_rtt_sample;
+    cJSON* json_sndr_rtt_smpls;
 
     long stream_max_rtt;
     long stream_min_rtt;
