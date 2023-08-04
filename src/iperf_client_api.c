@@ -564,10 +564,11 @@ iperf_run_client(struct iperf_test * test)
 
     startup = 1;
     while (test->state != IPERF_DONE) {
-	memcpy(&read_set, &test->read_set, sizeof(fd_set));
-	memcpy(&write_set, &test->write_set, sizeof(fd_set));
-	iperf_time_now(&now);
-	timeout = tmr_timeout(&now);
+
+        memcpy(&read_set, &test->read_set, sizeof(fd_set));
+        memcpy(&write_set, &test->write_set, sizeof(fd_set));
+        iperf_time_now(&now);
+        timeout = tmr_timeout(&now);
 
         // In reverse active mode client ensures data is received
         if (test->state == TEST_RUNNING && rcv_timeout_us > 0) {
@@ -584,10 +585,10 @@ iperf_run_client(struct iperf_test * test)
             timeout = &used_timeout;
         }
 
-	result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
-	if (result < 0 && errno != EINTR) {
-  	    i_errno = IESELECT;
-	    goto cleanup_and_fail;
+        result = select(test->max_fd + 1, &read_set, &write_set, NULL, timeout);
+        if (result < 0 && errno != EINTR) {
+            i_errno = IESELECT;
+            goto cleanup_and_fail;
         } else if (result == 0 && test->state == TEST_RUNNING && rcv_timeout_us > 0) {
             // If nothing was received in non-reverse running state then probably something got stack -
             // either client, server or network, and test should be terminated.
@@ -602,101 +603,108 @@ iperf_run_client(struct iperf_test * test)
             }
         }
 
-	if (result > 0) {
+        if (result > 0) {
             if (rcv_timeout_us > 0) {
                 iperf_time_now(&last_receive_time);
             }
-	    if (FD_ISSET(test->ctrl_sck, &read_set)) {
- 	        if (iperf_handle_message_client(test) < 0) {
-		    goto cleanup_and_fail;
-		}
-		FD_CLR(test->ctrl_sck, &read_set);
-	    }
-	}
+            if (FD_ISSET(test->ctrl_sck, &read_set)) {
 
-	if (test->state == TEST_RUNNING) {
+                if (iperf_handle_message_client(test) < 0) {
+                    goto cleanup_and_fail;
+                }
+                FD_CLR(test->ctrl_sck, &read_set);
+            }
+        }
 
-	    /* Is this our first time really running? */
-	    if (startup) {
-	        startup = 0;
+        if (test->state == TEST_RUNNING) {
 
-		// Set non-blocking for non-UDP tests
-		if (test->protocol->id != Pudp) {
-		    SLIST_FOREACH(sp, &test->streams, streams) {
-			setnonblocking(sp->socket, 1);
-		    }
-		}
-	    }
+            /* Is this our first time really running? */
+            if (startup) {
+
+                startup = 0;
+
+                // Set non-blocking for non-UDP tests
+                if (test->protocol->id != Pudp) {
+                    SLIST_FOREACH(sp, &test->streams, streams) {
+                    setnonblocking(sp->socket, 1);
+                    }
+                }
+            }
 
 
-	    if (test->mode == BIDIRECTIONAL)
-	    {
+            if (test->mode == BIDIRECTIONAL) {
+
                 if (iperf_send(test, &write_set) < 0)
                     goto cleanup_and_fail;
                 if (iperf_recv(test, &read_set) < 0)
                     goto cleanup_and_fail;
-	    } else if (test->mode == SENDER) {
-                // Regular mode. Client sends.
-                if (iperf_send(test, &write_set) < 0)
-                    goto cleanup_and_fail;
-	    } else {
-                // Reverse mode. Client receives.
-                if (iperf_recv(test, &read_set) < 0)
-                    goto cleanup_and_fail;
-	    }
+            } else if (test->mode == SENDER) {
+                    // Regular mode. Client sends.
+                    if (iperf_send(test, &write_set) < 0)
+                        goto cleanup_and_fail;
+            } else {
+                    // Reverse mode. Client receives.
+                    if (iperf_recv(test, &read_set) < 0)
+                        goto cleanup_and_fail;
+            }
 
 
             /* Run the timers. */
             iperf_time_now(&now);
             tmr_run(&now);
 
-	    /*
-	     * Is the test done yet?  We have to be out of omitting
-	     * mode, and then we have to have fulfilled one of the
-	     * ending criteria, either by times, bytes, or blocks.
-	     * The bytes and blocks tests needs to handle both the
-	     * cases of the client being the sender and the client
-	     * being the receiver.
-	     */
-	    if ((!test->omitting) &&
-	        (test->done ||
-	         (test->settings->bytes != 0 && (test->bytes_sent >= test->settings->bytes ||
-						 test->bytes_received >= test->settings->bytes)) ||
-	         (test->settings->blocks != 0 && (test->blocks_sent >= test->settings->blocks ||
-						  test->blocks_received >= test->settings->blocks)))) {
+            /*
+            * Is the test done yet?  We have to be out of omitting
+            * mode, and then we have to have fulfilled one of the
+            * ending criteria, either by times, bytes, or blocks.
+            * The bytes and blocks tests needs to handle both the
+            * cases of the client being the sender and the client
+            * being the receiver.
+            */
+            if ((!test->omitting) &&
+                (test->done ||
+                    (test->settings->bytes != 0 && (test->bytes_sent >= test->settings->bytes ||
+                                test->bytes_received >= test->settings->bytes)) ||
+                    (test->settings->blocks != 0 && (test->blocks_sent >= test->settings->blocks ||
+                                test->blocks_received >= test->settings->blocks))
+                    )
+                ) {
 
-		// Unset non-blocking for non-UDP tests
-		if (test->protocol->id != Pudp) {
-		    SLIST_FOREACH(sp, &test->streams, streams) {
-			setnonblocking(sp->socket, 0);
-		    }
-		}
+                // Unset non-blocking for non-UDP tests
+                if (test->protocol->id != Pudp) {
 
-		/* Yes, done!  Send TEST_END. */
-		test->done = 1;
-		cpu_util(test->cpu_util);
-		test->stats_callback(test);
-		if (iperf_set_send_state(test, TEST_END) != 0)
+                    SLIST_FOREACH(sp, &test->streams, streams) {
+                        setnonblocking(sp->socket, 0);
+                    }
+                }
+
+                /* Yes, done!  Send TEST_END. */
+                test->done = 1;
+                cpu_util(test->cpu_util);
+                test->stats_callback(test);
+
+                if (iperf_set_send_state(test, TEST_END) != 0)
                     goto cleanup_and_fail;
-	    }
-	}
-	// If we're in reverse mode, continue draining the data
-	// connection(s) even if test is over.  This prevents a
-	// deadlock where the server side fills up its pipe(s)
-	// and gets blocked, so it can't receive state changes
-	// from the client side.
-	else if (test->mode == RECEIVER && test->state == TEST_END) {
-	    if (iperf_recv(test, &read_set) < 0)
-		goto cleanup_and_fail;
-	}
+            }
+        }
+
+        // If we're in reverse mode, continue draining the data
+        // connection(s) even if test is over.  This prevents a
+        // deadlock where the server side fills up its pipe(s)
+        // and gets blocked, so it can't receive state changes
+        // from the client side.
+        else if (test->mode == RECEIVER && test->state == TEST_END) {
+            if (iperf_recv(test, &read_set) < 0)
+            goto cleanup_and_fail;
+        }
     }
 
     if (test->json_output) {
-	if (iperf_json_finish(test) < 0)
-	    return -1;
+        if (iperf_json_finish(test) < 0)
+            return -1;
     } else {
-	iperf_printf(test, "\n");
-	iperf_printf(test, "%s", report_done);
+        iperf_printf(test, "\n");
+        iperf_printf(test, "%s", report_done);
     }
 
     iflush(test);
