@@ -672,29 +672,32 @@ iperf_run_client(struct iperf_test * test)
                     )
                 ) {
 
-                    // Loop through all stream sockets
+                    // If test is byte or block limited, loop through all stream sockets
                     // If any socket still has pending bytes, do not end test
 
                     int end_test_flag = 1;
 
-                    SLIST_FOREACH(sp, &test->streams, streams) {
+                    if ((test->settings->bytes != 0) || (test->settings->blocks != 0)) {
 
-                        int pending_bytes_in_socket;
-                        if (ioctl(sp->socket, TIOCOUTQ, &pending_bytes_in_socket) < 0) {
+                        SLIST_FOREACH(sp, &test->streams, streams) {
 
-                            iperf_err(
-                                sp->test,
-                                "Failure when reading TIOCOUTQ. Socket: %d "
-                                    "Error: %s[%d]\n",
-                                sp->socket,
-                                strerror(errno),
-                                errno
-                            );
-                        } else {
+                            int pending_bytes_in_socket;
+                            if (ioctl(sp->socket, TIOCOUTQ, &pending_bytes_in_socket) < 0) {
 
-                            if (pending_bytes_in_socket > 0) {
+                                iperf_err(
+                                    sp->test,
+                                    "Failure when reading TIOCOUTQ. Socket: %d "
+                                        "Error: %s[%d]\n",
+                                    sp->socket,
+                                    strerror(errno),
+                                    errno
+                                );
+                            } else {
 
-                                end_test_flag = 0;
+                                if (pending_bytes_in_socket > 0) {
+
+                                    end_test_flag = 0;
+                                }
                             }
                         }
                     }

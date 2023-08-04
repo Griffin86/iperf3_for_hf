@@ -19,7 +19,7 @@ jobs:
     - name: build
       run: |
         ./configure && make && make check
-        timeout 600 src/iperf3 -s &
+        timeout 300 src/iperf3 -s &
         ./test_commands.sh localhost
   build-test-ubuntu-20_04:
     runs-on: ubuntu-20.04
@@ -31,5 +31,5 @@ jobs:
     - name: build
       run: |
         ./configure && make && make check
-        timeout 600 src/iperf3 -s &
+        timeout 300 src/iperf3 -s &
         ./test_commands.sh localhost
