@@ -125,6 +125,8 @@ struct iperf_stream_result
     /* cJSON handle for samples */
     cJSON* json_sndr_rtt_smpls;
 
+    long stream_last_rtt_measurement;
+
     long stream_max_rtt;
     long stream_min_rtt;
     long stream_sum_rtt;

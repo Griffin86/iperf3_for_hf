@@ -3362,6 +3362,7 @@ iperf_stats_callback(struct iperf_test *test)
                     }
 
                     temp.rtt = get_rtt(&temp);
+
                     if (temp.rtt > rp->stream_max_rtt) {
                         rp->stream_max_rtt = temp.rtt;
                     }
@@ -3370,19 +3371,22 @@ iperf_stats_callback(struct iperf_test *test)
                         rp->stream_min_rtt = temp.rtt;
                     }
 
-                    if (temp.bytes_transferred > 0) {
+                    if (temp.rtt != rp->stream_last_rtt_measurement) {
 
-                        // Only sum and count the RTT if bytes were transferred
-                        // (Determined via inspection that the RTT seems to only
-                        //  change in intervals when bytes were transferred)
-
-                        // This is probably not a true '1-to-1' relation
-                        // (Although it could be based on the RTT calculation in
-                        //  the kernel) but it provides a 'good enough' approximation
-                        // to avoid 'skewing' the RTT average by 'overusing' a single
-                        // measurement. (Kernel TCP_INFO will always return last measured
-                        // RTT value - without a sure fire way of knowing if the value has been
-                        // updated since the last tcp_info call or not)
+                        // Only sum and count the RTT if the value has changed
+                        // (Originally necessary to prevent stream_sum_rtt
+                        // counter overflow for HF tests; Also necessary to
+                        // provide 'cleaner' RTT sample data)
+                        // Kernel TCP_INFO will always return last measured
+                        // RTT value - without a sure fire way of knowing if
+                        // the value has been updated since the last tcp_info
+                        // call or not)
+                        // The 'value change' check is the next best thing
+                        // Consider it reliable (enough) since it is highly
+                        // unlikely that the RTT value will remain exactly the
+                        // same when it is updated - given that the RTT is
+                        // measured in microseconds, and considering the nature
+                        // of IP traffic over HF)
 
                         rp->stream_sum_rtt += temp.rtt;
                         rp->stream_count_rtt++;
@@ -3392,13 +3396,15 @@ iperf_stats_callback(struct iperf_test *test)
                         if (test->json_output) {
 
                             cJSON_AddNumberToObject(
-                                sp->result->json_sndr_rtt_smpls,
+                                rp->json_sndr_rtt_smpls,
                                 "sample", // name doesn't actually matter here
                                 (double) temp.rtt
                             );
 
                         }
                     }
+
+                    rp->stream_last_rtt_measurement = temp.rtt;
 
                     temp.rttvar = get_rttvar(&temp);
                     temp.pmtu = get_pmtu(&temp);
