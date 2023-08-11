@@ -99,10 +99,10 @@ iperf_errexit(struct iperf_test *test, const char *format, ...)
 
     /* Timestamp if requested */
     if (test != NULL && test->timestamps) {
-	time(&now);
-	ltm = localtime(&now);
-	strftime(iperf_timestrerr, sizeof(iperf_timestrerr), "%c ", ltm);
-	ct = iperf_timestrerr;
+        time(&now);
+        ltm = localtime(&now);
+        strftime(iperf_timestrerr, sizeof(iperf_timestrerr), "%c ", ltm);
+        ct = iperf_timestrerr;
     }
 
     va_start(argp, format);
@@ -111,20 +111,20 @@ iperf_errexit(struct iperf_test *test, const char *format, ...)
         if (test->json_top != NULL) {
             cJSON_AddStringToObject(test->json_top, "error_exit", str);
         }
-	iperf_json_finish(test);
+        iperf_json_finish(test);
     } else
-	if (test && test->outfile && test->outfile != stdout) {
-	    if (ct) {
-		fprintf(test->outfile, "%s", ct);
-	    }
-	    fprintf(test->outfile, "iperf3: %s\n", str);
-	}
-	else {
-	    if (ct) {
-		fprintf(stderr, "%s", ct);
-	    }
-	    fprintf(stderr, "iperf3: %s\n", str);
-	}
+    if (test && test->outfile && test->outfile != stdout) {
+        if (ct) {
+            fprintf(test->outfile, "%s", ct);
+        }
+        fprintf(test->outfile, "iperf3: %s\n", str);
+    }
+    else {
+        if (ct) {
+            fprintf(stderr, "%s", ct);
+        }
+        fprintf(stderr, "iperf3: %s\n", str);
+    }
     va_end(argp);
     if (test)
         iperf_delete_pidfile(test);
