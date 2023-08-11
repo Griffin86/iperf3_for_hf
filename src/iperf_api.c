@@ -1805,6 +1805,28 @@ int iperf_open_logfile(struct iperf_test *test)
         return -1;
     }
 
+    char error_outfile_prefix[] = "error_";
+    size_t error_outfile_prefix_length =
+        (sizeof(error_outfile_prefix) / sizeof(char));
+
+    size_t error_outfile_fn_length =
+        error_outfile_prefix_length +
+        strlen(test->logfile);
+
+    char* error_outfile_fn = (char*)calloc(error_outfile_fn_length + 1, sizeof(char));
+
+    strncat(error_outfile_fn, error_outfile_prefix, error_outfile_fn_length);
+    strncat(error_outfile_fn, test->logfile, (error_outfile_fn_length - error_outfile_prefix_length));
+
+    test->error_outfile = fopen(error_outfile_fn, "a+");
+
+    if (test->error_outfile == NULL) {
+        i_errno = IELOGFILE;
+        return -1;
+    }
+
+    free(error_outfile_fn);
+
     return 0;
 }
 
@@ -5057,7 +5079,7 @@ iperf_json_start(struct iperf_test *test)
 }
 
 int
-iperf_json_finish(struct iperf_test *test)
+iperf_json_finish(struct iperf_test *test, int use_alternate_error_log_file)
 {
     if (test->json_top) {
         if (test->title) {
@@ -5085,7 +5107,15 @@ iperf_json_finish(struct iperf_test *test)
         if (test->json_output_string == NULL) {
             return -1;
         }
-        fprintf(test->outfile, "%s\n", test->json_output_string);
+
+        FILE* tmp_out_fd = test->outfile;
+
+        if (use_alternate_error_log_file == 1) {
+            tmp_out_fd = test->error_outfile;
+        }
+
+        fprintf(tmp_out_fd, "%s\n", test->json_output_string);
+
         iflush(test);
         cJSON_Delete(test->json_top);
         test->json_top = NULL;

@@ -347,6 +347,7 @@ struct iperf_test
 
     char     *logfile;				/* --logfile option */
     FILE     *outfile;
+    FILE     *error_outfile;
 
     int       ctrl_sck;
     int       mapped_v4;

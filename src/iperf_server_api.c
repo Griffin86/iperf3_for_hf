@@ -906,7 +906,7 @@ iperf_run_server(struct iperf_test *test)
 
 
     if (test->json_output) {
-        if (iperf_json_finish(test) < 0)
+        if (iperf_json_finish(test, 0) < 0)
             return -1;
     }
 

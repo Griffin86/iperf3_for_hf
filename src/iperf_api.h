@@ -353,7 +353,7 @@ void iperf_check_total_rate(struct iperf_test *, iperf_size_t);
 
 /* JSON output routines. */
 int iperf_json_start(struct iperf_test *);
-int iperf_json_finish(struct iperf_test *);
+int iperf_json_finish(struct iperf_test *, int use_alternate_error_log_file);
 
 /* CPU affinity routines */
 int iperf_setaffinity(struct iperf_test *, int affinity);

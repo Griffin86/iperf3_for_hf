@@ -155,7 +155,7 @@ run(struct iperf_test *test)
                 if (rc < 0) {
                     iperf_err(test, "error - %s", iperf_strerror(i_errno));
                     if (test->json_output) {
-                        if (iperf_json_finish(test) < 0)
+                        if (iperf_json_finish(test, 1) < 0)
                             return -1;
                     }
                     iflush(test);

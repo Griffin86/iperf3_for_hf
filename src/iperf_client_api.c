@@ -732,7 +732,7 @@ iperf_run_client(struct iperf_test * test)
     }
 
     if (test->json_output) {
-        if (iperf_json_finish(test) < 0)
+        if (iperf_json_finish(test, 0) < 0)
             return -1;
     } else {
         iperf_printf(test, "\n");
@@ -747,7 +747,7 @@ iperf_run_client(struct iperf_test * test)
     iperf_client_end(test);
     if (test->json_output) {
         cJSON_AddStringToObject(test->json_top, "error", iperf_strerror(i_errno));
-        iperf_json_finish(test);
+        iperf_json_finish(test, 1);
     }
     iflush(test);
     return -1;
