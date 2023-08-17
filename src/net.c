@@ -240,11 +240,41 @@ netdial(int domain, int proto, const char *local, const char *bind_dev, int loca
       return -1;
     }
 
+    /// NOTE: Hardcoding control socket MSS to 1300 to safely account for
+    ///       crypto overhead
+    ///       (Could be a terminal line parameter - but time ...)
+
+    int opt;
+    socklen_t len;
+    len = sizeof(opt);
+
+    // Desired MSS
+    int ctrl_sck_mss = 1300;
+
+    if (getsockopt(s, IPPROTO_TCP, TCP_MAXSEG, &opt, &len) < 0) {
+        // Could not read current MSS - leave desired value unchanged
+    } else {
+
+        // Ensure MSS is not set larger than the original / default
+        // (Perhaps redundant - but an attempt to ensure that the MSS is not
+        // forced larger than the maximum allocated by the Linux network stack)
+        // (e.g. due to smaller interface MTU sizes)
+        if (ctrl_sck_mss > opt) {
+            ctrl_sck_mss = opt;
+        }
+    }
+
+    if (setsockopt(s, IPPROTO_TCP, TCP_MAXSEG, &ctrl_sck_mss, sizeof(ctrl_sck_mss)) < 0) {
+        return -1;
+    }
+
+    /// END of hardcoded MSS block
+
     if (timeout_connect(s, (struct sockaddr *) server_res->ai_addr, server_res->ai_addrlen, timeout) < 0 && errno != EINPROGRESS) {
-	saved_errno = errno;
-	close(s);
-	freeaddrinfo(server_res);
-	errno = saved_errno;
+        saved_errno = errno;
+        close(s);
+        freeaddrinfo(server_res);
+        errno = saved_errno;
         return -1;
     }
 
