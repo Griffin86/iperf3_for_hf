@@ -1950,6 +1950,17 @@ iperf_send(struct iperf_test *test, fd_set *write_setP)
                 if (multisend > 1 && test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
                     break;
 
+                // Stop sending data if test limits are reached - regardless of
+                // multisend status
+                // (keep original iperf multisend checks for easier reference)
+                /// NOTE: not entirely sure why these checks were dependent on
+                /// multisend in the first place...
+                if (test->settings->bytes != 0 && test->bytes_sent >= test->settings->bytes)
+                    break;
+
+                if (test->settings->blocks != 0 && test->blocks_sent >= test->settings->blocks)
+                    break;
+
                 if ((r = sp->snd(sp)) < 0) {
 
                     if (r == NET_SOFTERROR)
