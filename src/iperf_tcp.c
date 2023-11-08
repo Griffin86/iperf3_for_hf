@@ -457,7 +457,8 @@ iperf_tcp_send(struct iperf_stream *sp)
         // }
 
         if (iperf_get_tcp_based_latency_test((sp->test)) == 1 &&
-            pending_bytes_in_socket >= sp->settings->blksize
+                pending_bytes_in_socket > 0 &&
+                sp->pending_size == sp->settings->blksize
             ) {
 
             // Don't write bytes to socket if still have pending block
