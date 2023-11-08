@@ -75,6 +75,8 @@ iperf_tcp_recv(struct iperf_stream *sp)
         sp->result->bytes_received += r;
         sp->result->bytes_received_this_interval += r;
 
+        int old_buffer_read_offset = sp->buffer_read_offset;
+
         if ((sp->buffer_read_offset + r) > sp->settings->blksize) {
 
             // WARN if this occurs - shouldn't happen since we only read one
@@ -95,7 +97,9 @@ iperf_tcp_recv(struct iperf_stream *sp)
             sp->buffer_read_offset += r;
         }
 
-        if (sp->buffer_read_offset >= (sizeof(uint32_t) * 2)) {
+        if (old_buffer_read_offset < (sizeof(uint32_t) * 2) &&
+            sp->buffer_read_offset >= (sizeof(uint32_t) * 2)
+            ) {
 
             // Process start block timestamp
             uint32_t sec, usec;
